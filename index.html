@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KCNX</title>
+    <style>
+        /* ─── reset & base ─── */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        /* ─── loading screen ─── */
+        #loading-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.9s ease;
+        }
+
+        #loading-screen.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* KCNX text – Netflix style */
+        .kcnx-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+        }
+
+        .kcnx-logo span {
+            font-size: clamp(70px, 18vw, 180px);
+            font-weight: 900;
+            color: #e50914;
+            text-transform: uppercase;
+            letter-spacing: -6px;
+            animation: netflixZoom 3.2s ease-in-out forwards;
+            opacity: 0;
+            transform: scale(0.4);
+            text-shadow: 0 0 40px rgba(229, 9, 20, 0.3);
+        }
+
+        /* Netflix‑like zoom & fade */
+        @keyframes netflixZoom {
+            0% {
+                opacity: 0;
+                transform: scale(0.3);
+            }
+            20% {
+                opacity: 1;
+                transform: scale(1.1);
+            }
+            40% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            70% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1.6);
+                opacity: 0;
+            }
+        }
+
+        /* subtle glow underlay */
+        .kcnx-glow {
+            position: absolute;
+            width: 50%;
+            height: 40%;
+            background: radial-gradient(circle, rgba(229, 9, 20, 0.15) 0%, transparent 70%);
+            filter: blur(40px);
+            z-index: -1;
+        }
+
+        /* small "KCNX" tagline (optional) */
+        .tagline {
+            margin-top: 20px;
+            color: rgba(255, 255, 255, 0.2);
+            font-size: 14px;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            font-weight: 300;
+            animation: fadeTag 3.5s ease forwards;
+            opacity: 0;
+        }
+
+        @keyframes fadeTag {
+            0%,
+            70% {
+                opacity: 0;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+
+        /* ─── hidden audio player ─── */
+        #bg-audio {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ═══ LOADING SCREEN ═══ -->
+    <div id="loading-screen">
+        <div class="kcnx-glow"></div>
+        <div class="kcnx-logo">
+            <span>K</span>
+            <span>C</span>
+            <span>N</span>
+            <span>X</span>
+        </div>
+        <div class="tagline">coming soon</div>
+    </div>
+
+    <!-- ═══ BACKGROUND MUSIC ═══ -->
+    <audio id="bg-audio" preload="auto">
+        <source src="https://res.cloudinary.com/ccmt3psw/video/upload/v1785604165/Netflix_intro_-_QuickSounds.com_junlgu.mp3" type="audio/mpeg" />
+        Your browser does not support the audio element.
+    </audio>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const loadingScreen = document.getElementById('loading-screen');
+            const audio = document.getElementById('bg-audio');
+
+            // ── 1. Play audio (with user‑interaction fallback) ──
+            function playAudio() {
+                audio.play().catch(() => {
+                    // if autoplay blocked, wait for any user click
+                    document.addEventListener('click', function playOnClick() {
+                        audio.play().catch(() => {});
+                        document.removeEventListener('click', playOnClick);
+                    }, { once: true });
+                });
+            }
+
+            // ── 2. Redirect to moviesbazar.tv ──
+            function redirectToMoviesBazar() {
+                // fade out loading screen
+                loadingScreen.classList.add('fade-out');
+
+                // wait for fade transition, then redirect
+                setTimeout(() => {
+                    window.location.href = 'https://moviesbazar.tv';
+                }, 900); // matches CSS transition duration
+            }
+
+            // ── 3. Start the flow ──
+            // Try to play audio immediately
+            playAudio();
+
+            // The intro animation lasts ~3.2s (from CSS keyframes)
+            // We wait 3.8s so the sound has time to play fully,
+            // then redirect.
+            const INTRO_DURATION = 3800; // ms
+
+            setTimeout(() => {
+                redirectToMoviesBazar();
+            }, INTRO_DURATION);
+
+            // ── 4. Fallback: if audio ends earlier, redirect anyway ──
+            audio.addEventListener('ended', () => {
+                // avoid double redirect if timeout already fired
+                if (!loadingScreen.classList.contains('fade-out')) {
+                    redirectToMoviesBazar();
+                }
+            });
+
+            // ── 5. Safety net: redirect after 6s even if something fails ──
+            setTimeout(() => {
+                if (!loadingScreen.classList.contains('fade-out')) {
+                    redirectToMoviesBazar();
+                }
+            }, 6000);
+
+        })();
+    </script>
+
+</body>
+</html>
+
+
+            
+     
