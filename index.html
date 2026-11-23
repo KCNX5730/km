@@ -1,494 +1,672 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="referrer" content="no-referrer" />
-  <title>Game Background</title>
-  <style>
-    * { box-sizing: border-box; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#000000">
+<title>Netflix Unofficial</title>
 
-    html, body {
-      margin: 0;
-      height: 100%;
-      background: #000;
-      font-family: system-ui, -apple-system, sans-serif;
-      overflow: hidden;
-      -webkit-tap-highlight-color: transparent;
-    }
+<!-- ================= WEB ICONS ================= -->
+<link rel="icon" type="image/svg+xml" href="https://files.catbox.moe/usv7dg.svg">
+<link rel="apple-touch-icon" href="https://files.catbox.moe/usv7dg.svg">
+<link rel="manifest" href='data:application/manifest+json,{"name":"KFLIX","short_name":"KFLIX","start_url":"/","display":"standalone","background_color":"%23000000","theme_color":"%23e2262c","icons":[{"src":"https://files.catbox.moe/usv7dg.svg","sizes":"any","type":"image/svg%2Bxml","purpose":"any"}]}'>
 
-    /* ---------- Video (full brightness, no overlay) ---------- */
-    .background-video {
-      position: fixed;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      object-position: center;
-      z-index: 0;
-      pointer-events: none;
-    }
+<style>
+  :root{
+    --red:#e2262c;
+    --red-dark:#b81c22;
+    --bg:#000;
+    --panel:#2d2d2d;
+    --muted:rgba(255,255,255,.7);
+    --maxw:1100px;
+  }
 
-    /* ---------- Corner icon buttons ---------- */
-    .corner-btn {
-      position: fixed;
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
-      background: rgba(0, 0, 0, 0.55);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: #fff;
-      display: grid;
-      place-items: center;
-      cursor: pointer;
-      z-index: 101;
-      padding: 0;
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      transition: background 0.15s, transform 0.08s;
-    }
-    .corner-btn:hover { background: rgba(0, 0, 0, 0.75); }
-    .corner-btn:active { transform: scale(0.94); }
-    .corner-btn svg { width: 20px; height: 20px; display: block; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);
+    color:#fff;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  body.locked{overflow:hidden}
+  img{max-width:100%;display:block}
+  button{font-family:inherit}
 
-    #sound-btn {
-      top: calc(12px + env(safe-area-inset-top));
-      right: calc(12px + env(safe-area-inset-right));
-    }
-    #fs-btn {
-      top: calc(12px + env(safe-area-inset-top));
-      left: calc(12px + env(safe-area-inset-left));
-    }
-    #fs-btn[hidden] { display: none; }
+  /* ============ INTRO OVERLAY (video -> iframe) ============ */
+  .intro{
+    position:fixed;inset:0;z-index:9999;
+    background:#000;
+    display:flex;align-items:center;justify-content:center;
+    opacity:0;visibility:hidden;
+    transition:opacity .35s ease,visibility .35s ease;
+    overflow:hidden;
+  }
+  .intro.show{opacity:1;visibility:visible}
+  .intro video{
+    width:100%;
+    height:100%;
+    max-width:100vw;
+    max-height:100vh;
+    object-fit:contain;
+    background:#000;
+    outline:none;
+  }
 
-    /* Sound icon states */
-    .corner-btn .wave  { transition: opacity 0.15s; }
-    .corner-btn.muted .wave { opacity: 0; }
-    .corner-btn .slash { opacity: 0; transition: opacity 0.15s; }
-    .corner-btn.muted .slash { opacity: 1; }
-    .corner-btn.muted { color: rgba(255, 255, 255, 0.55); }
+  /* Stage 2: embedded site */
+  .intro .embed-stage{
+    position:absolute;inset:0;
+    display:none;
+    background:#000;
+    flex-direction:column;
+  }
+  .intro .embed-stage.active{display:flex}
 
-    /* ---------- Gamepad ---------- */
-    .gamepad {
-      position: fixed;
-      inset: 0;
-      z-index: 50;
-      pointer-events: none;
-    }
-    @media (orientation: portrait) and (max-width: 1024px) {
-      .gamepad { display: none; }
-    }
+  .embed-bar{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:.75rem;
+    padding:.6rem 1rem;
+    background:#0a0a0a;
+    border-bottom:1px solid rgba(255,255,255,.12);
+    font-size:.85rem;
+    flex:0 0 auto;
+  }
+  .embed-bar .brand{
+    font-weight:900;letter-spacing:.14em;color:var(--red);
+    font-size:1rem;
+  }
+  .embed-bar .fallback{
+    color:var(--muted);text-decoration:none;
+    border:1px solid rgba(255,255,255,.35);
+    border-radius:4px;
+    padding:.35rem .7rem;
+    transition:color .15s,border-color .15s;
+  }
+  .embed-bar .fallback:hover{color:#fff;border-color:#fff}
 
-    /* D-pad (bottom-left) */
-    .dpad {
-      position: absolute;
-      bottom: calc(20px + env(safe-area-inset-bottom));
-      left:   calc(20px + env(safe-area-inset-left));
-      display: grid;
-      grid-template-columns: 52px 52px 52px;
-      grid-template-rows:    52px 52px 52px;
-      grid-template-areas:
-        ".    up    ."
-        "left mid   right"
-        ".    down  .";
-      gap: 3px;
-      pointer-events: auto;
-    }
-    .dpad-btn {
-      background: rgba(255, 255, 255, 0.16);
-      border: 1px solid rgba(255, 255, 255, 0.28);
-      color: #fff;
-      font-size: 15px;
-      cursor: pointer;
-      touch-action: none;
-      user-select: none;
-      -webkit-user-select: none;
-      display: grid;
-      place-items: center;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-      transition: background 0.08s, transform 0.08s;
-    }
-    .dpad-btn.pressed {
-      background: rgba(255, 255, 255, 0.42);
-      transform: scale(0.94);
-    }
-    .dpad-btn.up    { grid-area: up;    border-radius: 10px 10px 2px 2px; }
-    .dpad-btn.down  { grid-area: down;  border-radius: 2px 2px 10px 10px; }
-    .dpad-btn.left  { grid-area: left;  border-radius: 10px 2px 2px 10px; }
-    .dpad-btn.right { grid-area: right; border-radius: 2px 10px 10px 2px; }
-    .dpad-center {
-      grid-area: mid;
-      width: 22px; height: 22px;
-      justify-self: center;
-      align-self: center;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 50%;
-    }
+  .embed-stage iframe{
+    flex:1 1 auto;
+    width:100%;
+    border:0;
+    background:#000;
+  }
 
-    /* ABXY (bottom-right) */
-    .action-buttons {
-      position: absolute;
-      bottom: calc(20px + env(safe-area-inset-bottom));
-      right:  calc(20px + env(safe-area-inset-right));
-      display: grid;
-      grid-template-columns: 56px 56px 56px;
-      grid-template-rows:    56px 56px 56px;
-      grid-template-areas:
-        ".  y  ."
-        "x  .  b"
-        ".  a  .";
-      gap: 4px;
-      pointer-events: auto;
-    }
-    .action-btn {
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      border: 2px solid rgba(255, 255, 255, 0.6);
-      color: #fff;
-      font-size: 18px;
-      font-weight: 700;
-      cursor: pointer;
-      touch-action: none;
-      user-select: none;
-      -webkit-user-select: none;
-      display: grid;
-      place-items: center;
-      padding: 0;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
-      transition: transform 0.08s, filter 0.08s;
-    }
-    .action-btn.pressed { transform: scale(0.9); filter: brightness(1.4); }
-    .action-btn.y { grid-area: y; background: rgba(255, 193, 7, 0.85);  color: #111; }
-    .action-btn.x { grid-area: x; background: rgba(33, 150, 243, 0.85); }
-    .action-btn.b { grid-area: b; background: rgba(244, 67, 54, 0.85);  }
-    .action-btn.a { grid-area: a; background: rgba(76, 175, 80, 0.85);  }
+  /* Loading hint while the site embeds */
+  .embed-loader{
+    position:absolute;left:50%;top:50%;
+    transform:translate(-50%,-50%);
+    color:var(--muted);
+    font-size:.95rem;
+    pointer-events:none;
+    transition:opacity .3s;
+  }
+  .embed-loader.hide{opacity:0}
 
-    /* START / SELECT (bottom-center) */
-    .system-buttons {
-      position: absolute;
-      bottom: calc(20px + env(safe-area-inset-bottom));
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 12px;
-      pointer-events: auto;
-    }
-    .sys-btn {
-      padding: 9px 18px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.16);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      color: #fff;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      cursor: pointer;
-      touch-action: none;
-      user-select: none;
-      -webkit-user-select: none;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-      transition: background 0.08s, transform 0.08s;
-    }
-    .sys-btn.pressed {
-      background: rgba(255, 255, 255, 0.42);
-      transform: scale(0.95);
-    }
+  /* ============ HEADER ============ */
+  .header{
+    position:absolute;top:0;left:0;right:0;z-index:40;
+    display:flex;align-items:center;justify-content:space-between;
+    gap:1rem;
+    padding:1.4rem clamp(1rem,4vw,3.5rem);
+    background:linear-gradient(180deg,rgba(0,0,0,.85),transparent);
+  }
+  .logo{
+    font-size:clamp(1.5rem,3vw,2.1rem);
+    font-weight:900;
+    letter-spacing:.14em;
+    color:var(--red);
+    text-shadow:0 0 22px rgba(226,38,44,.55);
+    line-height:1;
+  }
+  .lang-wrap{position:relative;display:inline-flex;align-items:center}
+  .lang-select{
+    appearance:none;-webkit-appearance:none;
+    background:rgba(0,0,0,.55);
+    color:#fff;
+    border:1px solid rgba(255,255,255,.4);
+    border-radius:4px;
+    padding:.5rem 2.2rem .5rem 2.4rem;
+    font-size:.95rem;
+    cursor:pointer;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.4'><path d='M6 9l6 6 6-6'/></svg>");
+    background-repeat:no-repeat;
+    background-position:right .7rem center;
+  }
+  .lang-wrap::before{
+    content:"";
+    position:absolute;left:.75rem;width:16px;height:16px;pointer-events:none;
+    background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.8'><circle cx='12' cy='12' r='9'/><path d='M3 12h18M12 3c2.5 3 2.5 15 0 18M12 3c-2.5 3-2.5 15 0 18'/></svg>") center/contain no-repeat;
+  }
 
-    /* ---------- Rotate warning ---------- */
-    .rotate-warning {
-      display: none;
-      position: fixed;
-      inset: 0;
-      z-index: 100;
-      background: rgba(8, 8, 12, 0.96);
-      color: #fff;
-      place-items: center;
-      text-align: center;
-      padding: 2rem;
-    }
-    @media (orientation: portrait) and (max-width: 1024px) {
-      .rotate-warning { display: grid; }
-    }
-    .rotate-inner { max-width: 22rem; }
-    .rotate-icon {
-      width: 62px; height: 108px;
-      margin: 0 auto 2rem;
-      border: 3px solid #fff;
-      border-radius: 12px;
-      position: relative;
-      animation: rotate-hint 2.4s ease-in-out infinite;
-    }
-    .rotate-icon::after {
-      content: "";
-      position: absolute;
-      bottom: 9px; left: 50%;
-      transform: translateX(-50%);
-      width: 20px; height: 3px;
-      border-radius: 2px;
-      background: #fff; opacity: 0.8;
-    }
-    @keyframes rotate-hint {
-      0%, 22%  { transform: rotate(0deg); }
-      52%, 74% { transform: rotate(-90deg); }
-      100%     { transform: rotate(0deg); }
-    }
-    .rotate-warning h2 { font-size: 1.4rem; margin: 0 0 0.6rem; }
-    .rotate-warning p  { margin: 0; font-size: 0.95rem; line-height: 1.5; opacity: 0.75; }
+  /* ============ HERO ============ */
+  .hero{
+    position:relative;
+    min-height:100svh;
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    text-align:center;
+    padding:9rem 1.25rem 7rem;
+    overflow:hidden;
+  }
 
-    @media (prefers-reduced-motion: reduce) {
-      .rotate-icon { animation: none; transform: rotate(-90deg); }
-      * { transition: none !important; }
-    }
+  .hero-bg{
+    position:absolute;inset:0;z-index:0;
+    background:linear-gradient(
+      120deg,
+      #0a0a12 0%,
+      #2b1b5e 18%,
+      #b81c22 38%,
+      #e2262c 50%,
+      #b81c22 62%,
+      #2b1b5e 82%,
+      #0a0a12 100%
+    );
+    background-size:400% 400%;
+    animation:rgbFlow 14s ease infinite;
+  }
+  .hero-bg::after{
+    content:"";position:absolute;inset:0;
+    background:radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,.82) 100%);
+    pointer-events:none;
+  }
+  @keyframes rgbFlow{
+    0%{background-position:0% 50%}
+    50%{background-position:100% 50%}
+    100%{background-position:0% 50%}
+  }
 
-    /* Error fallback if video can't load */
-    .video-error {
-      position: fixed; inset: 0; z-index: 0;
-      background:
-        radial-gradient(circle at 30% 20%, #2a1f4d, transparent 60%),
-        radial-gradient(circle at 70% 80%, #4d1f2a, transparent 60%),
-        #000;
-    }
-  </style>
+  .hero-content{
+    position:relative;z-index:3;
+    width:100%;max-width:720px;
+  }
+  .hero h1{
+    font-size:clamp(1.9rem,5.2vw,3.6rem);
+    font-weight:900;
+    line-height:1.1;
+    letter-spacing:-.01em;
+    text-shadow:0 2px 24px rgba(0,0,0,.85);
+  }
+
+  .hero-curve{
+    position:absolute;left:50%;bottom:-2px;z-index:2;
+    transform:translateX(-50%);
+    width:150%;height:90px;
+    background:#000;
+    border-radius:50% 50% 0 0 / 100% 100% 0 0;
+    pointer-events:none;
+  }
+
+  /* ============ BUTTON ============ */
+  .btn-primary{
+    display:inline-flex;align-items:center;justify-content:center;gap:.45rem;
+    background:var(--red);
+    color:#fff;border:0;border-radius:4px;
+    padding:1rem 2.2rem;
+    font-size:clamp(1.05rem,2.2vw,1.45rem);
+    font-weight:700;
+    cursor:pointer;
+    white-space:nowrap;
+    transition:background .2s,transform .1s,box-shadow .2s;
+    margin-top:1.6rem;
+    box-shadow:0 0 0 0 rgba(226,38,44,0);
+  }
+  .btn-primary:hover{
+    background:var(--red-dark);
+    box-shadow:0 0 26px rgba(226,38,44,.55);
+  }
+  .btn-primary:active{transform:scale(.975)}
+  .btn-primary svg{width:22px;height:22px}
+
+  /* ============ FOOTER ============ */
+  .footer{
+    max-width:var(--maxw);
+    margin:0 auto;
+    padding:3rem clamp(1rem,4vw,1.5rem) 4rem;
+    color:var(--muted);
+    font-size:.88rem;
+  }
+  .footer .q{
+    margin-bottom:1.5rem;
+    display:flex;align-items:center;gap:.5rem;
+  }
+  .footer .q svg{flex:0 0 auto;opacity:.85}
+  .footer a{
+    color:var(--muted);text-decoration:none;
+    display:inline-flex;align-items:center;gap:.35rem;
+    transition:color .15s;
+  }
+  .footer a:hover{color:#fff}
+  .footer a svg{flex:0 0 auto;opacity:.7}
+  .footer-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+    gap:.85rem 1.25rem;
+    margin-bottom:1.75rem;
+  }
+  .footer .brand-note{
+    font-size:.8rem;
+    color:rgba(255,255,255,.45);
+    display:flex;align-items:center;gap:.4rem;
+  }
+  .footer .brand-note svg{opacity:.6}
+
+  @media (max-width:640px){
+    .hero{padding:8rem 1.25rem 6rem}
+  }
+</style>
 </head>
 <body>
 
-  <!-- Background video -->
-  <video id="bgVideo" class="background-video" autoplay muted loop playsinline webkit-playsinline preload="auto">
-    <source src="https://files.catbox.moe/nxzwzl.mp4" type="video/mp4" />
-  </video>
+<!-- ================= INTRO OVERLAY (video -> iframe) ================= -->
+<div class="intro" id="intro" aria-hidden="true">
 
-  <!-- Corner icons -->
-  <button id="sound-btn" class="corner-btn" aria-label="Toggle sound">
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor"/>
-      <path class="wave" d="M15.5 8.5a5 5 0 0 1 0 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      <path class="wave" d="M19 5a10 10 0 0 1 0 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      <line class="slash" x1="3" y1="3" x2="21" y2="21" stroke="#ff3b30" stroke-width="2.5" stroke-linecap="round"/>
-    </svg>
-  </button>
+  <!-- Stage 1: intro video -->
+  <video
+    id="introVideo"
+    playsinline
+    preload="none"
+    src="https://res.cloudinary.com/ccmt3psw/video/upload/v1795418529/Netflix-Intro-4K-SnapYT.App_utez9h.mp4"
+  ></video>
 
-  <button id="fs-btn" class="corner-btn" aria-label="Fullscreen" hidden>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M8 3H5a2 2 0 0 0-2 2v3"/>
-      <path d="M16 3h3a2 2 0 0 1 2 2v3"/>
-      <path d="M8 21H5a2 2 0 0 1-2-2v-3"/>
-      <path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
-    </svg>
-  </button>
-
-  <!-- Gamepad -->
-  <div class="gamepad" id="gamepad">
-    <div class="dpad">
-      <button class="dpad-btn up"    data-key="up"    aria-label="Up">▲</button>
-      <button class="dpad-btn left"  data-key="left"  aria-label="Left">◀</button>
-      <div class="dpad-center"></div>
-      <button class="dpad-btn right" data-key="right" aria-label="Right">▶</button>
-      <button class="dpad-btn down"  data-key="down"  aria-label="Down">▼</button>
+  <!-- Stage 2: embedded moviesbazar -->
+  <div class="embed-stage" id="embedStage">
+    <div class="embed-bar">
+      <span class="brand">NETFLIX</span>
+      <a class="fallback" id="fallbackLink"
+         href="https://www.moviesbazar.media/"
+         target="_blank" rel="noopener noreferrer">
+        Open directly ↗
+      </a>
     </div>
+    <div class="embed-loader" id="embedLoader">Loading moviesbazar.media…</div>
+    <iframe
+      id="siteFrame"
+      title="moviesbazar.media"
+      src=""
+      referrerpolicy="no-referrer-when-downgrade"
+      allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+      allowfullscreen
+    ></iframe>
+  </div>
+</div>
 
-    <div class="action-buttons">
-      <button class="action-btn y" data-key="y" aria-label="Y">Y</button>
-      <button class="action-btn x" data-key="x" aria-label="X">X</button>
-      <button class="action-btn b" data-key="b" aria-label="B">B</button>
-      <button class="action-btn a" data-key="a" aria-label="A">A</button>
-    </div>
+<!-- ================= HEADER ================= -->
+<header class="header">
+  <div class="logo">NETFLIX</div>
+  <div class="lang-wrap">
+    <select class="lang-select" id="langSelect" aria-label="Select Language">
+      <option value="en" selected>English</option>
+      <option value="hi">हिन्दी</option>
+      <option value="mr">मराठी</option>
+      <option value="ta">தமிழ்</option>
+      <option value="te">తెలుగు</option>
+      <option value="bn">বাংলা</option>
+      <option value="gu">ગુજરાતી</option>
+      <option value="kn">ಕನ್ನಡ</option>
+      <option value="ml">മലയാളം</option>
+      <option value="pa">ਪੰਜਾਬੀ</option>
+    </select>
+  </div>
+</header>
 
-    <div class="system-buttons">
-      <button class="sys-btn" data-key="select" aria-label="Select">SELECT</button>
-      <button class="sys-btn" data-key="start"  aria-label="Start">START</button>
-    </div>
+<!-- ================= HERO ================= -->
+<section class="hero">
+  <div class="hero-bg"></div>
+
+  <div class="hero-content">
+    <h1 id="heroHeadline">Unlimited movies, shows, and more</h1>
+    <button class="btn-primary" id="getStartedBtn" type="button">
+      <span id="btnLabel">Get Started</span>
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path fill="currentColor" fill-rule="evenodd"
+          d="m15.586 12-7.293 7.293 1.414 1.414 8-8a1 1 0 0 0 0-1.414l-8-8-1.414 1.414z"
+          clip-rule="evenodd"/>
+      </svg>
+    </button>
   </div>
 
-  <!-- Rotate warning -->
-  <div class="rotate-warning" id="rotateWarning">
-    <div class="rotate-inner">
-      <div class="rotate-icon"></div>
-      <h2>Rotate your device</h2>
-      <p>Turn your phone sideways to play.</p>
-    </div>
+  <div class="hero-curve"></div>
+</section>
+
+<!-- ================= FOOTER ================= -->
+<footer class="footer">
+  <p class="q">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+    </svg>
+    <span data-i18n="footerCall">Questions? Call 000-800-919-1694</span>
+  </p>
+  <div class="footer-grid">
+    <a href="#">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span data-i18n="faq">FAQ</span>
+    </a>
+    <a href="#">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span data-i18n="helpCentre">Help Centre</span>
+    </a>
+    <a href="#">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span data-i18n="account">Account</span>
+    </a>
+    <a href="#">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+      <span data-i18n="mediaCentre">Media Centre</span>
+    </a>
+    <a href="#">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+      <span data-i18n="investorRelations">Investor Relations</span>
+    </a>
+    <a href="#">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+      <span data-i18n="jobs">Jobs</span>
+    </a>
+    <a href="#">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+      <span data-i18n="waysToWatch">Ways to Watch</span>
+    </a>
+    <a href="#">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <span data-i18n="termsOfUse">Terms of Use</span>
+    </a>
+    <a href="#">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <span data-i18n="privacy">Privacy</span>
+    </a>
+    <a href="#">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      <span data-i18n="cookiePreferences">Cookie Preferences</span>
+    </a>
+    <a href="#">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
+      <span data-i18n="corporateInfo">Corporate Information</span>
+    </a>
+    <a href="#">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span data-i18n="contactUs">Contact Us</span>
+    </a>
+    <a href="#">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span data-i18n="speedTest">Speed Test</span>
+    </a>
+    <a href="#">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      <span data-i18n="legalNotices">Legal Notices</span>
+    </a>
+    <a href="#">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      <span data-i18n="onlyOnKflix">Only on KFLIX</span>
+    </a>
   </div>
+  <p class="brand-note">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
+    </svg>
+    <span data-i18n="brandNote">KFLIX India · KCNX WebOS 2026</span>
+  </p>
+</footer>
 
-  <script>
-  (function () {
-    const video    = document.getElementById('bgVideo');
-    const soundBtn = document.getElementById('sound-btn');
-    const fsBtn    = document.getElementById('fs-btn');
-    const warning  = document.getElementById('rotateWarning');
+<script>
+(function () {
+  "use strict";
 
-    let userMuted = false; // true only if the user explicitly muted
+  /* ============================================================
+     CONFIG
+     ============================================================ */
+  var EMBED_URL       = "https://www.moviesbazar.media/";
+  var FALLBACK_URL    = "https://www.moviesbazar.media/";
+  var VIDEO_TIMEOUT   = 30000;  // safety if "ended" never fires
+  var EMBED_TIMEOUT   = 8000;   // if embed hasn't loaded, push to fallback
 
-    /* ---------- Video load error ---------- */
-    video.addEventListener('error', () => {
-      console.error('Video load failed:', video.error && video.error.code);
-      video.style.display = 'none';
-      const fb = document.createElement('div');
-      fb.className = 'video-error';
-      document.body.prepend(fb);
+  /* ============================================================
+     TRANSLATIONS
+     ============================================================ */
+  var I18N = {
+    en: {
+      heroHeadline: "Unlimited movies, shows, and more",
+      btnLabel: "Get Started",
+      footerCall: "Questions? Call 000-800-919-1694",
+      faq: "FAQ", helpCentre: "Help Centre", account: "Account",
+      mediaCentre: "Media Centre", investorRelations: "Investor Relations",
+      jobs: "Jobs", waysToWatch: "Ways to Watch", termsOfUse: "Terms of Use",
+      privacy: "Privacy", cookiePreferences: "Cookie Preferences",
+      corporateInfo: "Corporate Information", contactUs: "Contact Us",
+      speedTest: "Speed Test", legalNotices: "Legal Notices",
+      onlyOnKflix: "Only on KFLIX", brandNote: "KFLIX India · KCNX WebOS 2026"
+    },
+    hi: {
+      heroHeadline: "असीमित फिल्में, शोज़ और बहुत कुछ",
+      btnLabel: "शुरू करें",
+      footerCall: "सवाल हैं? कॉल करें 000-800-919-1694",
+      faq: "अक्सर पूछे जाने वाले प्रश्न", helpCentre: "सहायता केंद्र",
+      account: "खाता", mediaCentre: "मीडिया केंद्र",
+      investorRelations: "निवेशक संबंध", jobs: "नौकरियाँ",
+      waysToWatch: "देखने के तरीके", termsOfUse: "उपयोग की शर्तें",
+      privacy: "गोपनीयता", cookiePreferences: "कुकी प्राथमिकताएँ",
+      corporateInfo: "कॉर्पोरेट जानकारी", contactUs: "संपर्क करें",
+      speedTest: "स्पीड टेस्ट", legalNotices: "कानूनी सूचनाएँ",
+      onlyOnKflix: "केवल KFLIX पर", brandNote: "KFLIX भारत · KCNX WebOS 2026"
+    },
+    mr: {
+      heroHeadline: "अमर्यादित चित्रपट, मालिका आणि बरेच काही",
+      btnLabel: "सुरू करा",
+      footerCall: "प्रश्न आहेत? कॉल करा 000-800-919-1694",
+      faq: "वारंवार विचारले जाणारे प्रश्न", helpCentre: "मदत केंद्र",
+      account: "खाते", mediaCentre: "मीडिया केंद्र",
+      investorRelations: "गुंतवणूकदार संबंध", jobs: "नोकऱ्या",
+      waysToWatch: "पाहण्याचे मार्ग", termsOfUse: "वापरण्याच्या अटी",
+      privacy: "गोपनीयता", cookiePreferences: "कुकी प्राधान्ये",
+      corporateInfo: "कॉर्पोरेट माहिती", contactUs: "आमच्याशी संपर्क साधा",
+      speedTest: "स्पीड टेस्ट", legalNotices: "कायदेशीर सूचना",
+      onlyOnKflix: "फक्त KFLIX वर", brandNote: "KFLIX भारत · KCNX WebOS 2026"
+    },
+    ta: {
+      heroHeadline: "வரம்பற்ற திரைப்படங்கள், நிகழ்ச்சிகள் மற்றும் பல",
+      btnLabel: "தொடங்குங்கள்",
+      footerCall: "கேள்விகளா? அழைக்கவும் 000-800-919-1694",
+      faq: "அடிக்கடி கேட்கப்படும் கேள்விகள்", helpCentre: "உதவி மையம்",
+      account: "கணக்கு", mediaCentre: "ஊடக மையம்",
+      investorRelations: "முதலீட்டாளர் உறவுகள்", jobs: "வேலைகள்",
+      waysToWatch: "பார்க்கும் வழிகள்", termsOfUse: "பயன்பாட்டு விதிமுறைகள்",
+      privacy: "தனியுரிமை", cookiePreferences: "குக்கீ விருப்பத்தேர்வுகள்",
+      corporateInfo: "நிறுவனத் தகவல்", contactUs: "எங்களைத் தொடர்பு கொள்ளுங்கள்",
+      speedTest: "வேகச் சோதனை", legalNotices: "சட்ட அறிவிப்புகள்",
+      onlyOnKflix: "KFLIX இல் மட்டும்", brandNote: "KFLIX இந்தியா · KCNX WebOS 2026"
+    },
+    te: {
+      heroHeadline: "అపరిమిత సినిమాలు, షోలు మరియు మరిన్ని",
+      btnLabel: "ప్రారంభించండి",
+      footerCall: "ప్రశ్నలు ఉన్నాయా? కాల్ చేయండి 000-800-919-1694",
+      faq: "తరచుగా అడిగే ప్రశ్నలు", helpCentre: "సహాయ కేంద్రం",
+      account: "ఖాతా", mediaCentre: "మీడియా కేంద్రం",
+      investorRelations: "పెట్టుబడిదారుల సంబంధాలు", jobs: "ఉద్యోగాలు",
+      waysToWatch: "వీక్షించే మార్గాలు", termsOfUse: "ఉపయోగ నిబంధనలు",
+      privacy: "గోప్యత", cookiePreferences: "కుకీ ప్రాధాన్యతలు",
+      corporateInfo: "కార్పొరేట్ సమాచారం", contactUs: "మమ్మల్ని సంప్రదించండి",
+      speedTest: "స్పీడ్ టెస్ట్", legalNotices: "చట్టపరమైన నోటీసులు",
+      onlyOnKflix: "KFLIX లో మాత్రమే", brandNote: "KFLIX భారత్ · KCNX WebOS 2026"
+    },
+    bn: {
+      heroHeadline: "আনলিমিটেড সিনেমা, শো এবং আরও অনেক কিছু",
+      btnLabel: "শুরু করুন",
+      footerCall: "প্রশ্ন আছে? কল করুন 000-800-919-1694",
+      faq: "সচরাচর জিজ্ঞাসিত প্রশ্ন", helpCentre: "সহায়তা কেন্দ্র",
+      account: "অ্যাকাউন্ট", mediaCentre: "মিডিয়া সেন্টার",
+      investorRelations: "বিনিয়োগকারী সম্পর্ক", jobs: "চাকরি",
+      waysToWatch: "দেখার উপায়", termsOfUse: "ব্যবহারের শর্তাবলী",
+      privacy: "গোপনীয়তা", cookiePreferences: "কুকি পছন্দ",
+      corporateInfo: "কর্পোরেট তথ্য", contactUs: "আমাদের সাথে যোগাযোগ করুন",
+      speedTest: "স্পিড টেস্ট", legalNotices: "আইনি নোটিশ",
+      onlyOnKflix: "শুধুমাত্র KFLIX-এ", brandNote: "KFLIX ভারত · KCNX WebOS 2026"
+    },
+    gu: {
+      heroHeadline: "અમર્યાદિત ફિલ્મો, શો અને વધુ",
+      btnLabel: "શરૂ કરો",
+      footerCall: "પ્રશ્નો છે? કૉલ કરો 000-800-919-1694",
+      faq: "વારંવાર પૂછાતા પ્રશ્નો", helpCentre: "સહાય કેન્દ્ર",
+      account: "ખાતું", mediaCentre: "મીડિયા કેન્દ્ર",
+      investorRelations: "રોકાણકાર સંબંધો", jobs: "નોકરીઓ",
+      waysToWatch: "જોવાની રીતો", termsOfUse: "ઉપયોગની શરતો",
+      privacy: "ગોપનીયતા", cookiePreferences: "કૂકી પસંદગીઓ",
+      corporateInfo: "કોર્પોરેટ માહિતી", contactUs: "અમારો સંપર્ક કરો",
+      speedTest: "સ્પીડ ટેસ્ટ", legalNotices: "કાનૂની સૂચનાઓ",
+      onlyOnKflix: "ફક્ત KFLIX પર", brandNote: "KFLIX ભારત · KCNX WebOS 2026"
+    },
+    kn: {
+      heroHeadline: "ಅಪರಿಮಿತ ಚಲನಚಿತ್ರಗಳು, ಕಾರ್ಯಕ್ರಮಗಳು ಮತ್ತು ಇನ್ನಷ್ಟು",
+      btnLabel: "ಪ್ರಾರಂಭಿಸಿ",
+      footerCall: "ಪ್ರಶ್ನೆಗಳಿವೆಯೇ? ಕರೆ ಮಾಡಿ 000-800-919-1694",
+      faq: "ಪದೇ ಪದೇ ಕೇಳಲಾಗುವ ಪ್ರಶ್ನೆಗಳು", helpCentre: "ಸಹಾಯ ಕೇಂದ್ರ",
+      account: "ಖಾತೆ", mediaCentre: "ಮೀಡಿಯಾ ಕೇಂದ್ರ",
+      investorRelations: "ಹೂಡಿಕೆದಾರರ ಸಂಬಂಧಗಳು", jobs: "ಉದ್ಯೋಗಗಳು",
+      waysToWatch: "ವೀಕ್ಷಿಸುವ ವಿಧಾನಗಳು", termsOfUse: "ಬಳಕೆಯ ನಿಯಮಗಳು",
+      privacy: "ಗೋಪ್ಯತೆ", cookiePreferences: "ಕುಕಿ ಆದ್ಯತೆಗಳು",
+      corporateInfo: "ಕಾರ್ಪೊರೇಟ್ ಮಾಹಿತಿ", contactUs: "ನಮ್ಮನ್ನು ಸಂಪರ್ಕಿಸಿ",
+      speedTest: "ವೇಗ ಪರೀಕ್ಷೆ", legalNotices: "ಕಾನೂನು ಸೂಚನೆಗಳು",
+      onlyOnKflix: "KFLIX ನಲ್ಲಿ ಮಾತ್ರ", brandNote: "KFLIX ಭಾರತ · KCNX WebOS 2026"
+    },
+    ml: {
+      heroHeadline: "പരിധിയില്ലാത്ത സിനിമകൾ, ഷോകൾ, ഒപ്പം ഒരുപാട് കൂടി",
+      btnLabel: "ആരംഭിക്കുക",
+      footerCall: "ചോദ്യങ്ങളുണ്ടോ? വിളിക്കുക 000-800-919-1694",
+      faq: "പതിവായി ചോദിക്കുന്ന ചോദ്യങ്ങൾ", helpCentre: "സഹായ കേന്ദ്രം",
+      account: "അക്കൗണ്ട്", mediaCentre: "മീഡിയ സെന്റർ",
+      investorRelations: "നിക്ഷേപക ബന്ധങ്ങൾ", jobs: "ജോലികൾ",
+      waysToWatch: "കാണാനുള്ള വഴികൾ", termsOfUse: "ഉപയോഗ നിബന്ധനകൾ",
+      privacy: "സ്വകാര്യത", cookiePreferences: "കുക്കി മുൻഗണനകൾ",
+      corporateInfo: "കോർപ്പറേറ്റ് വിവരങ്ങൾ", contactUs: "ഞങ്ങളെ ബന്ധപ്പെടുക",
+      speedTest: "സ്പീഡ് ടെസ്റ്റ്", legalNotices: "നിയമപരമായ അറിയിപ്പുകൾ",
+      onlyOnKflix: "KFLIX-ൽ മാത്രം", brandNote: "KFLIX ഇന്ത്യ · KCNX WebOS 2026"
+    },
+    pa: {
+      heroHeadline: "ਬੇਅੰਤ ਫ਼ਿਲਮਾਂ, ਸ਼ੋਅ ਅਤੇ ਹੋਰ ਬਹੁਤ ਕੁਝ",
+      btnLabel: "ਸ਼ੁਰੂ ਕਰੋ",
+      footerCall: "ਸਵਾਲ ਹਨ? ਕਾਲ ਕਰੋ 000-800-919-1694",
+      faq: "ਅਕਸਰ ਪੁੱਛੇ ਜਾਂਦੇ ਸਵਾਲ", helpCentre: "ਸਹਾਇਤਾ ਕੇਂਦਰ",
+      account: "ਖਾਤਾ", mediaCentre: "ਮੀਡੀਆ ਕੇਂਦਰ",
+      investorRelations: "ਨਿਵੇਸ਼ਕ ਸੰਬੰਧ", jobs: "ਨੌਕਰੀਆਂ",
+      waysToWatch: "ਦੇਖਣ ਦੇ ਤਰੀਕੇ", termsOfUse: "ਵਰਤੋਂ ਦੀਆਂ ਸ਼ਰਤਾਂ",
+      privacy: "ਗੋਪਨੀਯਤਾ", cookiePreferences: "ਕੂਕੀ ਤਰਜੀਹਾਂ",
+      corporateInfo: "ਕਾਰਪੋਰੇਟ ਜਾਣਕਾਰੀ", contactUs: "ਸਾਡੇ ਨਾਲ ਸੰਪਰਕ ਕਰੋ",
+      speedTest: "ਸਪੀਡ ਟੈਸਟ", legalNotices: "ਕਾਨੂੰਨੀ ਨੋਟਿਸ",
+      onlyOnKflix: "ਸਿਰਫ਼ KFLIX 'ਤੇ", brandNote: "KFLIX ਭਾਰਤ · KCNX WebOS 2026"
+    }
+  };
+
+  /* ============================================================
+     LANGUAGE SWITCHING
+     ============================================================ */
+  var langSelect = document.getElementById("langSelect");
+  var heroHeadline = document.getElementById("heroHeadline");
+  var btnLabel = document.getElementById("btnLabel");
+
+  function applyLanguage(lang) {
+    var dict = I18N[lang] || I18N.en;
+
+    heroHeadline.textContent = dict.heroHeadline;
+    btnLabel.textContent = dict.btnLabel;
+
+    var nodes = document.querySelectorAll("[data-i18n]");
+    Array.prototype.forEach.call(nodes, function (node) {
+      var key = node.getAttribute("data-i18n");
+      if (dict[key]) node.textContent = dict[key];
     });
 
-    /* ---------- Sound ---------- */
-    function updateSoundIcon() {
-      if (video.muted) soundBtn.classList.add('muted');
-      else             soundBtn.classList.remove('muted');
-      soundBtn.setAttribute('aria-label', video.muted ? 'Unmute' : 'Mute');
-    }
+    document.documentElement.lang = lang;
+  }
 
-    function unmute() {
-      video.muted = false;
-      updateSoundIcon();
-      const p = video.play();
-      if (p && p.catch) p.catch(() => {});
-    }
+  langSelect.addEventListener("change", function () {
+    applyLanguage(this.value);
+  });
 
-    // Try unmuted autoplay first; fall back to muted + unlock-on-interaction
-    (async () => {
-      updateSoundIcon();
-      try {
-        video.muted = false;
-        await video.play();
-        updateSoundIcon();
-      } catch (_) {
-        video.muted = true;
-        updateSoundIcon();
-        try { await video.play(); } catch (e) { console.warn('Autoplay blocked:', e.name); }
-      }
-    })();
+  applyLanguage("en");
 
-    // First interaction anywhere unlocks audio (unless user muted on purpose)
-    function unlockAudio(e) {
-      if (userMuted) return;
-      if (!video.muted) return;
-      if (e && e.target && e.target.closest && e.target.closest('#sound-btn')) return;
-      unmute();
-    }
-    document.addEventListener('pointerdown', unlockAudio, { passive: true });
-    document.addEventListener('touchstart',  unlockAudio, { passive: true });
-    document.addEventListener('keydown',     unlockAudio);
+  /* ============================================================
+     INTRO VIDEO -> EMBEDDED SITE
+     ============================================================ */
+  var intro        = document.getElementById("intro");
+  var video        = document.getElementById("introVideo");
+  var embedStage   = document.getElementById("embedStage");
+  var siteFrame    = document.getElementById("siteFrame");
+  var embedLoader  = document.getElementById("embedLoader");
+  var fallbackLink = document.getElementById("fallbackLink");
 
-    // Sound button — stop pointerdown so unlock logic doesn't fight the toggle
-    soundBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
-    soundBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (video.muted) {
-        userMuted = false;
-        unmute();
-      } else {
-        video.muted = true;
-        userMuted = true;
-        updateSoundIcon();
-      }
-    });
+  var videoTimer = null;
+  var embedTimer = null;
+  var started    = false;
 
-    /* ---------- Fullscreen ---------- */
-    async function goFullscreen() {
-      if (document.fullscreenElement || document.webkitFullscreenElement) return;
-      const el = document.documentElement;
-      try {
-        if (el.requestFullscreen)            await el.requestFullscreen({ navigationUI: 'hide' });
-        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-      } catch (err) { console.warn('Fullscreen blocked:', err.name); }
-    }
-    fsBtn.addEventListener('click', goFullscreen);
+  function showEmbed() {
+    if (videoTimer) { clearTimeout(videoTimer); videoTimer = null; }
 
-    /* ---------- Orientation / fullscreen UI ---------- */
-    const isPortrait  = () => matchMedia('(orientation: portrait) and (max-width: 1024px)').matches;
-    const isLandscape = () => matchMedia('(orientation: landscape) and (max-height: 1024px)').matches;
+    // Switch from video stage to iframe stage
+    try { video.pause(); } catch (e) {}
+    video.style.display = "none";
+    embedStage.classList.add("active");
 
-    function updateUI() {
-      const inFull = !!(document.fullscreenElement || document.webkitFullscreenElement);
-      fsBtn.hidden = !(isLandscape() && !inFull);
-      warning.style.display = isPortrait() ? 'grid' : 'none';
-    }
+    siteFrame.src = EMBED_URL;
 
-    function handleOrientation() {
-      updateUI();
-      if (isLandscape() && !document.fullscreenElement) goFullscreen();
-      const p = video.play();
-      if (p && p.catch) p.catch(() => {});
-    }
+    // Hide loader once the frame reports load (may not fire if blocked)
+    siteFrame.addEventListener("load", function () {
+      embedLoader.classList.add("hide");
+    }, { once: true });
 
-    window.addEventListener('orientationchange', () => setTimeout(handleOrientation, 300));
-    window.addEventListener('resize', updateUI);
-    if (screen.orientation) screen.orientation.addEventListener('change', handleOrientation);
-    document.addEventListener('fullscreenchange',        updateUI);
-    document.addEventListener('webkitfullscreenchange',  updateUI);
+    // If the embed is blocked (X-Frame-Options / CSP), the load event
+    // may still fire on some browsers. Give the user a clear fallback.
+    embedTimer = setTimeout(function () {
+      embedLoader.classList.add("hide");
+      // Show the fallback link prominently
+      fallbackLink.style.borderColor = "var(--red)";
+      fallbackLink.style.color = "#fff";
+    }, EMBED_TIMEOUT);
+  }
 
-    /* ---------- Gamepad ---------- */
-    function emit(action, key, btn) {
-      document.dispatchEvent(new CustomEvent('gamepad:' + action, {
-        detail: { key, button: btn }
-      }));
-    }
+  function launchIntro() {
+    if (started) return;
+    started = true;
 
-    document.querySelectorAll('[data-key]').forEach((btn) => {
-      const key = btn.dataset.key;
-      let pressed = false;
+    intro.classList.add("show");
+    intro.setAttribute("aria-hidden", "false");
+    document.body.classList.add("locked");
 
-      const press = () => {
-        if (pressed) return;
-        pressed = true;
-        btn.classList.add('pressed');
-        emit('down', key, btn);
-      };
-      const release = () => {
-        if (!pressed) return;
-        pressed = false;
-        btn.classList.remove('pressed');
-        emit('up', key, btn);
-      };
+    video.currentTime = 0;
+    video.muted = false;
+    video.volume = 1;
 
-      btn.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
-        try { btn.setPointerCapture(e.pointerId); } catch (_) {}
-        press();
-        // do NOT stopPropagation — lets unlockAudio run on the same tap
+    var playPromise = video.play();
+    if (playPromise && typeof playPromise.catch === "function") {
+      playPromise.catch(function () {
+        // Autoplay blocked — skip straight to the embed
+        showEmbed();
       });
-      btn.addEventListener('pointerup',            release);
-      btn.addEventListener('pointercancel',        release);
-      btn.addEventListener('lostpointercapture',   release);
-      btn.addEventListener('pointerleave',         release);
-      btn.addEventListener('contextmenu', (e) => e.preventDefault());
-    });
+    }
 
-    // Keyboard → gamepad
-    const KEYMAP = {
-      'ArrowUp': 'up',    'w': 'up',    'W': 'up',
-      'ArrowDown': 'down','s': 'down',  'S': 'down',
-      'ArrowLeft': 'left','a': 'left',  'A': 'left',
-      'ArrowRight': 'right','d': 'right','D': 'right',
-      'j': 'a', 'J': 'a',
-      'k': 'b', 'K': 'b',
-      'l': 'y', 'L': 'y',
-      'i': 'x', 'I': 'x',
-      'Enter': 'start',
-      'Shift': 'select'
-    };
-    const kbHeld = new Set();
+    // If the video never ends, move on anyway
+    videoTimer = setTimeout(showEmbed, VIDEO_TIMEOUT);
+  }
 
-    document.addEventListener('keydown', (e) => {
-      const key = KEYMAP[e.key];
-      if (!key) return;
-      e.preventDefault();
-      if (kbHeld.has(key)) return;
-      kbHeld.add(key);
-      const btn = document.querySelector(`[data-key="${key}"]`);
-      if (btn) { btn.classList.add('pressed'); emit('down', key, btn); }
-    });
+  document.getElementById("getStartedBtn").addEventListener("click", launchIntro);
 
-    document.addEventListener('keyup', (e) => {
-      const key = KEYMAP[e.key];
-      if (!key) return;
-      kbHeld.delete(key);
-      const btn = document.querySelector(`[data-key="${key}"]`);
-      if (btn) { btn.classList.remove('pressed'); emit('up', key, btn); }
-    });
+  video.addEventListener("ended", showEmbed);
+  video.addEventListener("error", showEmbed);
 
-    /* ---------- Init ---------- */
-    updateUI();
-    updateSoundIcon();
-  })();
-  </script>
+  /* Reset when user navigates back */
+  window.addEventListener("pageshow", function (ev) {
+    if (ev.persisted) {
+      started = false;
+      if (videoTimer) { clearTimeout(videoTimer); videoTimer = null; }
+      if (embedTimer) { clearTimeout(embedTimer); embedTimer = null; }
+      try { video.pause(); video.currentTime = 0; } catch (e) {}
+      video.style.display = "";
+      embedStage.classList.remove("active");
+      siteFrame.src = "";
+      embedLoader.classList.remove("hide");
+      intro.classList.remove("show");
+      intro.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("locked");
+    }
+  });
+})();
+</script>
 </body>
 </html>
