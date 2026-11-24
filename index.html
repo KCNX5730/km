@@ -2,39 +2,45 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
-<title> KCNXFLIX INDIA</title>
+<title>KCNXFLIX – Watch Shows Online, Watch Movies Online</title>
 
-<!-- ================= WEB ICONS ================= -->
-<link rel="icon" type="image/svg+xml" href="https://files.catbox.moe/usv7dg.svg">
-<link rel="apple-touch-icon" href="https://files.catbox.moe/usv7dg.svg">
-<link rel="manifest" href='data:application/manifest+json,{"name":"KCNXFLIX","short_name":"Netflix","start_url":"/","display":"standalone","background_color":"%23000000","theme_color":"%23e2262c","icons":[{"src":"https://files.catbox.moe/usv7dg.svg","sizes":"any","type":"image/svg%2Bxml","purpose":"any"}]}'>
+<!-- ================= WEB ICONS / PWA ================= -->
+<link rel="icon" type="image/png" href="https://files.catbox.moe/4u5ypw.png">
+<link rel="apple-touch-icon" href="https://files.catbox.moe/4u5ypw.png">
+<link rel="manifest" href='data:application/manifest+json,{"name":"KCNXFLIX","short_name":"KCNXFLIX","start_url":"/","display":"standalone","background_color":"%23000000","theme_color":"%23e2262c","icons":[{"src":"https://files.catbox.moe/4u5ypw.png","sizes":"512x512","type":"image/png","purpose":"any"},{"src":"https://files.catbox.moe/4u5ypw.png","sizes":"192x192","type":"image/png","purpose":"any"}]}'>
 
 <style>
   :root{
     --red:#e2262c;
     --red-dark:#b81c22;
     --bg:#000;
-    --panel:#2d2d2d;
     --muted:rgba(255,255,255,.7);
     --maxw:1100px;
   }
 
   *{box-sizing:border-box;margin:0;padding:0}
   html{scroll-behavior:smooth}
+  html,body{height:100%}
   body{
     background:var(--bg);
     color:#fff;
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
     -webkit-font-smoothing:antialiased;
     overflow-x:hidden;
+    touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent;
   }
   body.locked{overflow:hidden}
   img{max-width:100%;display:block}
   button{font-family:inherit}
+  .sr-only{
+    position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+    overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
+  }
 
-  /* ============ INTRO OVERLAY (video -> iframe) ============ */
+  /* ============ INTRO OVERLAY ============ */
   .intro{
     position:fixed;inset:0;z-index:9999;
     background:#000;
@@ -45,63 +51,58 @@
   }
   .intro.show{opacity:1;visibility:visible}
   .intro video{
-    width:100%;
-    height:100%;
-    max-width:100vw;
-    max-height:100vh;
-    object-fit:contain;
-    background:#000;
-    outline:none;
+    width:100%;height:100%;
+    max-width:100vw;max-height:100vh;
+    object-fit:contain;background:#000;outline:none;
   }
 
-  /* Stage 2: embedded site */
   .intro .embed-stage{
     position:absolute;inset:0;
-    display:none;
-    background:#000;
+    display:none;background:#000;
     flex-direction:column;
+    width:100%;height:100%;
   }
   .intro .embed-stage.active{display:flex}
 
-  .embed-bar{
-    display:flex;align-items:center;justify-content:space-between;
-    gap:.75rem;
-    padding:.6rem 1rem;
-    background:#0a0a0a;
-    border-bottom:1px solid rgba(255,255,255,.12);
-    font-size:.85rem;
-    flex:0 0 auto;
+  /* ============ FLOATING HOME BUTTON (bottom-right, unobstructed) ============ */
+  .home-btn{
+    position:fixed;
+    bottom:16px;right:16px;z-index:20;
+    width:44px;height:44px;
+    border-radius:50%;
+    background:rgba(20,20,22,.88);
+    border:1px solid rgba(255,255,255,.25);
+    color:#fff;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    box-shadow:0 4px 16px rgba(0,0,0,.6);
+    transition:background .15s,border-color .15s,transform .15s;
   }
-  .embed-bar .brand{
-    font-weight:900;letter-spacing:.14em;color:var(--red);
-    font-size:1rem;
+  .home-btn:hover{
+    background:var(--red);
+    border-color:var(--red);
+    transform:scale(1.06);
   }
-  .embed-bar .fallback{
-    color:var(--muted);text-decoration:none;
-    border:1px solid rgba(255,255,255,.35);
-    border-radius:4px;
-    padding:.35rem .7rem;
-    transition:color .15s,border-color .15s;
-  }
-  .embed-bar .fallback:hover{color:#fff;border-color:#fff}
+  .home-btn:active{transform:scale(.95)}
+  .home-btn svg{width:19px;height:19px}
 
-  .embed-stage iframe{
+  /* ============ FULL-PAGE IFRAME (NO CROPPING) ============ */
+  .embed-frame-wrap{
+    position:relative;
     flex:1 1 auto;
+    width:100%;height:100%;
+    background:#000;
+    overflow:hidden;
+  }
+  .embed-frame-wrap iframe{
     width:100%;
+    height:100%;
+    margin-top:0;
     border:0;
+    display:block;
     background:#000;
   }
-
-  /* Loading hint while the site embeds */
-  .embed-loader{
-    position:absolute;left:50%;top:50%;
-    transform:translate(-50%,-50%);
-    color:var(--muted);
-    font-size:.95rem;
-    pointer-events:none;
-    transition:opacity .3s;
-  }
-  .embed-loader.hide{opacity:0}
 
   /* ============ HEADER ============ */
   .header{
@@ -112,37 +113,33 @@
     background:linear-gradient(180deg,rgba(0,0,0,.85),transparent);
   }
   .logo{
-    font-size:clamp(1.5rem,3vw,2.1rem);
-    font-weight:900;
-    letter-spacing:.14em;
-    color:var(--red);
-    text-shadow:0 0 22px rgba(226,38,44,.55);
-    line-height:1;
+    display:inline-flex;align-items:center;gap:.65rem;line-height:1;
   }
+  .logo .main-logo,
+  .logo .text-logo{
+    width:44px;height:44px;
+    object-fit:contain;
+    filter:drop-shadow(0 0 12px rgba(226,38,44,.55));
+  }
+
   .lang-wrap{position:relative;display:inline-flex;align-items:center}
   .lang-select{
     appearance:none;-webkit-appearance:none;
-    background:rgba(0,0,0,.55);
-    color:#fff;
-    border:1px solid rgba(255,255,255,.4);
-    border-radius:4px;
-    padding:.5rem 2.2rem .5rem 2.4rem;
-    font-size:.95rem;
-    cursor:pointer;
+    background:rgba(0,0,0,.55);color:#fff;
+    border:1px solid rgba(255,255,255,.4);border-radius:4px;
+    padding:.5rem 2.2rem .5rem 2.4rem;font-size:.95rem;cursor:pointer;
     background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.4'><path d='M6 9l6 6 6-6'/></svg>");
-    background-repeat:no-repeat;
-    background-position:right .7rem center;
+    background-repeat:no-repeat;background-position:right .7rem center;
   }
   .lang-wrap::before{
-    content:"";
-    position:absolute;left:.75rem;width:16px;height:16px;pointer-events:none;
+    content:"";position:absolute;left:.75rem;width:16px;height:16px;pointer-events:none;
     background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.8'><circle cx='12' cy='12' r='9'/><path d='M3 12h18M12 3c2.5 3 2.5 15 0 18M12 3c-2.5 3-2.5 15 0 18'/></svg>") center/contain no-repeat;
   }
 
   /* ============ HERO ============ */
   .hero{
     position:relative;
-    min-height:100svh;
+    min-height:100vh;min-height:100svh;
     display:flex;flex-direction:column;
     align-items:center;justify-content:center;
     text-align:center;
@@ -150,40 +147,52 @@
     overflow:hidden;
   }
 
+  /* FAST HORIZONTAL RGB FLOW */
   .hero-bg{
     position:absolute;inset:0;z-index:0;
     background:linear-gradient(
-      120deg,
-      #0a0a12 0%,
-      #2b1b5e 18%,
-      #b81c22 38%,
-      #e2262c 50%,
-      #b81c22 62%,
-      #2b1b5e 82%,
-      #0a0a12 100%
+      90deg,
+      #87ceeb 0%,
+      #00008b 12.5%,
+      #8a2be2 25%,
+      #ff00ff 37.5%,
+      #ffa500 50%,
+      #ff2020 62.5%,
+      #00ff00 75%,
+      #0000ff 87.5%,
+      #87ceeb 100%
     );
-    background-size:400% 400%;
-    animation:rgbFlow 14s ease infinite;
+    background-size:300% 100%;
+    animation:rgbFlowH 6s linear infinite;
   }
   .hero-bg::after{
     content:"";position:absolute;inset:0;
-    background:radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,.82) 100%);
+    background:radial-gradient(ellipse at center,transparent 32%,rgba(0,0,0,.78) 100%);
     pointer-events:none;
   }
-  @keyframes rgbFlow{
+  @keyframes rgbFlowH{
     0%{background-position:0% 50%}
-    50%{background-position:100% 50%}
-    100%{background-position:0% 50%}
+    100%{background-position:300% 50%}
   }
 
   .hero-content{
     position:relative;z-index:3;
     width:100%;max-width:720px;
+    display:flex;flex-direction:column;align-items:center;
+  }
+  .hero-icon{
+    width:clamp(84px,16vw,140px);height:auto;
+    margin-bottom:1.25rem;
+    filter:drop-shadow(0 0 26px rgba(226,38,44,.7));
+    animation:iconFloat 5s ease-in-out infinite;
+  }
+  @keyframes iconFloat{
+    0%,100%{transform:translateY(0)}
+    50%{transform:translateY(-8px)}
   }
   .hero h1{
     font-size:clamp(1.9rem,5.2vw,3.6rem);
-    font-weight:900;
-    line-height:1.1;
+    font-weight:900;line-height:1.1;
     letter-spacing:-.01em;
     text-shadow:0 2px 24px rgba(0,0,0,.85);
   }
@@ -191,8 +200,7 @@
   .hero-curve{
     position:absolute;left:50%;bottom:-2px;z-index:2;
     transform:translateX(-50%);
-    width:150%;height:90px;
-    background:#000;
+    width:150%;height:90px;background:#000;
     border-radius:50% 50% 0 0 / 100% 100% 0 0;
     pointer-events:none;
   }
@@ -200,16 +208,14 @@
   /* ============ BUTTON ============ */
   .btn-primary{
     display:inline-flex;align-items:center;justify-content:center;gap:.45rem;
-    background:var(--red);
-    color:#fff;border:0;border-radius:4px;
+    background:var(--red);color:#fff;border:0;border-radius:4px;
     padding:1rem 2.2rem;
     font-size:clamp(1.05rem,2.2vw,1.45rem);
-    font-weight:700;
-    cursor:pointer;
-    white-space:nowrap;
+    font-weight:700;cursor:pointer;white-space:nowrap;
     transition:background .2s,transform .1s,box-shadow .2s;
     margin-top:1.6rem;
     box-shadow:0 0 0 0 rgba(226,38,44,0);
+    touch-action:manipulation;
   }
   .btn-primary:hover{
     background:var(--red-dark);
@@ -220,16 +226,11 @@
 
   /* ============ FOOTER ============ */
   .footer{
-    max-width:var(--maxw);
-    margin:0 auto;
+    max-width:var(--maxw);margin:0 auto;
     padding:3rem clamp(1rem,4vw,1.5rem) 4rem;
-    color:var(--muted);
-    font-size:.88rem;
+    color:var(--muted);font-size:.88rem;
   }
-  .footer .q{
-    margin-bottom:1.5rem;
-    display:flex;align-items:center;gap:.5rem;
-  }
+  .footer .q{margin-bottom:1.5rem;display:flex;align-items:center;gap:.5rem}
   .footer .q svg{flex:0 0 auto;opacity:.85}
   .footer a{
     color:var(--muted);text-decoration:none;
@@ -239,61 +240,70 @@
   .footer a:hover{color:#fff}
   .footer a svg{flex:0 0 auto;opacity:.7}
   .footer-grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
-    gap:.85rem 1.25rem;
-    margin-bottom:1.75rem;
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+    gap:.85rem 1.25rem;margin-bottom:1.75rem;
   }
   .footer .brand-note{
-    font-size:.8rem;
-    color:rgba(255,255,255,.45);
+    font-size:.8rem;color:rgba(255,255,255,.45);
     display:flex;align-items:center;gap:.4rem;
   }
   .footer .brand-note svg{opacity:.6}
 
   @media (max-width:640px){
     .hero{padding:8rem 1.25rem 6rem}
+    .logo .main-logo,
+    .logo .text-logo{width:38px;height:38px}
+    .home-btn{width:40px;height:40px;bottom:12px;right:12px}
+    .home-btn svg{width:17px;height:17px}
   }
 </style>
 </head>
 <body>
 
-<!-- ================= INTRO OVERLAY (video -> iframe) ================= -->
+<!-- ================= INTRO OVERLAY ================= -->
 <div class="intro" id="intro" aria-hidden="true">
 
-  <!-- Stage 1: intro video -->
   <video
     id="introVideo"
     playsinline
-    preload="none"
-    src="https://res.cloudinary.com/ccmt3psw/video/upload/v1795418529/Netflix-Intro-4K-SnapYT.App_utez9h.mp4"
+    muted
+    preload="auto"
+    src="https://files.catbox.moe/hqjf7f.mp4"
   ></video>
 
-  <!-- Stage 2: embedded moviesbazar -->
   <div class="embed-stage" id="embedStage">
-    <div class="embed-bar">
-      <span class="brand">NETFLIX</span>
-      <a class="fallback" id="fallbackLink"
-         href="https://www.moviesbazar.media/"
-         target="_blank" rel="noopener noreferrer">
-        Open directly ↗
-      </a>
+
+    <!-- Floating Home button (resets to main page) -->
+    <button type="button" class="home-btn" id="homeBtn" aria-label="Home" title="Home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+    </button>
+
+    <!-- Full-page iframe allowing top-level navigation and popups -->
+    <div class="embed-frame-wrap">
+      <iframe
+        id="siteFrame"
+        title="Movies"
+        src=""
+        sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-presentation allow-top-navigation allow-popups"
+        referrerpolicy="no-referrer-when-downgrade"
+        allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+        allowfullscreen
+      ></iframe>
     </div>
-    <div class="embed-loader" id="embedLoader">Loading moviesbazar.media…</div>
-    <iframe
-      id="siteFrame"
-      title="moviesbazar.media"
-      src=""
-      referrerpolicy="no-referrer-when-downgrade"
-      allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-      allowfullscreen
-    ></iframe>
   </div>
 </div>
 
 <!-- ================= HEADER ================= -->
 <header class="header">
-  <div class="logo">NETFLIX</div>
+  <div class="logo">
+    <img class="main-logo" src="https://files.catbox.moe/4u5ypw.png" alt="KCNXFLIX Icon">
+    <img class="text-logo" src="https://files.catbox.moe/u2loov.png" alt="KCNXFLIX Logo">
+    <span class="sr-only">KCNXFLIX</span>
+  </div>
   <div class="lang-wrap">
     <select class="lang-select" id="langSelect" aria-label="Select Language">
       <option value="en" selected>English</option>
@@ -315,9 +325,10 @@
   <div class="hero-bg"></div>
 
   <div class="hero-content">
+    <img class="hero-icon" src="https://files.catbox.moe/4u5ypw.png" alt="KCNXFLIX">
     <h1 id="heroHeadline">Unlimited movies, shows, and more</h1>
     <button class="btn-primary" id="getStartedBtn" type="button">
-      <span id="btnLabel">Get Started</span>
+      <span id="btnLabel">[ Get Started as Anonymous ]</span>
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path fill="currentColor" fill-rule="evenodd"
           d="m15.586 12-7.293 7.293 1.414 1.414 8-8a1 1 0 0 0 0-1.414l-8-8-1.414 1.414z"
@@ -396,16 +407,18 @@
     </a>
     <a href="#">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-      <span data-i18n="onlyOnKflix">Only on KFLIX</span>
+      <span data-i18n="onlyOnKflix">Only on KCNXFLIX</span>
     </a>
   </div>
   <p class="brand-note">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
     </svg>
-    <span data-i18n="brandNote">KFLIX India · KCNX WebOS 2026</span>
+    <span data-i18n="brandNote">KCNXFLIX · KCNX WebOS 2026</span>
   </p>
 </footer>
+
+<audio id="bgMusic" preload="auto" src="https://files.catbox.moe/pq4hly.mp3"></audio>
 
 <script>
 (function () {
@@ -414,156 +427,34 @@
   /* ============================================================
      CONFIG
      ============================================================ */
-  var EMBED_URL       = "https://www.moviesbazar.media/";
-  var FALLBACK_URL    = "https://www.moviesbazar.media/";
-  var VIDEO_TIMEOUT   = 30000;  // safety if "ended" never fires
-  var EMBED_TIMEOUT   = 8000;   // if embed hasn't loaded, push to fallback
+  var EMBED_URL     = "https://www.moviesbazar.media/";
+  var VIDEO_TIMEOUT = 30000;
 
   /* ============================================================
      TRANSLATIONS
      ============================================================ */
   var I18N = {
-    en: {
-      heroHeadline: "Unlimited movies, shows, and more",
-      btnLabel: "Get Started",
-      footerCall: "Questions? Call 000-800-919-1694",
-      faq: "FAQ", helpCentre: "Help Centre", account: "Account",
-      mediaCentre: "Media Centre", investorRelations: "Investor Relations",
-      jobs: "Jobs", waysToWatch: "Ways to Watch", termsOfUse: "Terms of Use",
-      privacy: "Privacy", cookiePreferences: "Cookie Preferences",
-      corporateInfo: "Corporate Information", contactUs: "Contact Us",
-      speedTest: "Speed Test", legalNotices: "Legal Notices",
-      onlyOnKflix: "Only on KFLIX", brandNote: "KFLIX India · KCNX WebOS 2026"
-    },
-    hi: {
-      heroHeadline: "असीमित फिल्में, शोज़ और बहुत कुछ",
-      btnLabel: "शुरू करें",
-      footerCall: "सवाल हैं? कॉल करें 000-800-919-1694",
-      faq: "अक्सर पूछे जाने वाले प्रश्न", helpCentre: "सहायता केंद्र",
-      account: "खाता", mediaCentre: "मीडिया केंद्र",
-      investorRelations: "निवेशक संबंध", jobs: "नौकरियाँ",
-      waysToWatch: "देखने के तरीके", termsOfUse: "उपयोग की शर्तें",
-      privacy: "गोपनीयता", cookiePreferences: "कुकी प्राथमिकताएँ",
-      corporateInfo: "कॉर्पोरेट जानकारी", contactUs: "संपर्क करें",
-      speedTest: "स्पीड टेस्ट", legalNotices: "कानूनी सूचनाएँ",
-      onlyOnKflix: "केवल KFLIX पर", brandNote: "KFLIX भारत · KCNX WebOS 2026"
-    },
-    mr: {
-      heroHeadline: "अमर्यादित चित्रपट, मालिका आणि बरेच काही",
-      btnLabel: "सुरू करा",
-      footerCall: "प्रश्न आहेत? कॉल करा 000-800-919-1694",
-      faq: "वारंवार विचारले जाणारे प्रश्न", helpCentre: "मदत केंद्र",
-      account: "खाते", mediaCentre: "मीडिया केंद्र",
-      investorRelations: "गुंतवणूकदार संबंध", jobs: "नोकऱ्या",
-      waysToWatch: "पाहण्याचे मार्ग", termsOfUse: "वापरण्याच्या अटी",
-      privacy: "गोपनीयता", cookiePreferences: "कुकी प्राधान्ये",
-      corporateInfo: "कॉर्पोरेट माहिती", contactUs: "आमच्याशी संपर्क साधा",
-      speedTest: "स्पीड टेस्ट", legalNotices: "कायदेशीर सूचना",
-      onlyOnKflix: "फक्त KFLIX वर", brandNote: "KFLIX भारत · KCNX WebOS 2026"
-    },
-    ta: {
-      heroHeadline: "வரம்பற்ற திரைப்படங்கள், நிகழ்ச்சிகள் மற்றும் பல",
-      btnLabel: "தொடங்குங்கள்",
-      footerCall: "கேள்விகளா? அழைக்கவும் 000-800-919-1694",
-      faq: "அடிக்கடி கேட்கப்படும் கேள்விகள்", helpCentre: "உதவி மையம்",
-      account: "கணக்கு", mediaCentre: "ஊடக மையம்",
-      investorRelations: "முதலீட்டாளர் உறவுகள்", jobs: "வேலைகள்",
-      waysToWatch: "பார்க்கும் வழிகள்", termsOfUse: "பயன்பாட்டு விதிமுறைகள்",
-      privacy: "தனியுரிமை", cookiePreferences: "குக்கீ விருப்பத்தேர்வுகள்",
-      corporateInfo: "நிறுவனத் தகவல்", contactUs: "எங்களைத் தொடர்பு கொள்ளுங்கள்",
-      speedTest: "வேகச் சோதனை", legalNotices: "சட்ட அறிவிப்புகள்",
-      onlyOnKflix: "KFLIX இல் மட்டும்", brandNote: "KFLIX இந்தியா · KCNX WebOS 2026"
-    },
-    te: {
-      heroHeadline: "అపరిమిత సినిమాలు, షోలు మరియు మరిన్ని",
-      btnLabel: "ప్రారంభించండి",
-      footerCall: "ప్రశ్నలు ఉన్నాయా? కాల్ చేయండి 000-800-919-1694",
-      faq: "తరచుగా అడిగే ప్రశ్నలు", helpCentre: "సహాయ కేంద్రం",
-      account: "ఖాతా", mediaCentre: "మీడియా కేంద్రం",
-      investorRelations: "పెట్టుబడిదారుల సంబంధాలు", jobs: "ఉద్యోగాలు",
-      waysToWatch: "వీక్షించే మార్గాలు", termsOfUse: "ఉపయోగ నిబంధనలు",
-      privacy: "గోప్యత", cookiePreferences: "కుకీ ప్రాధాన్యతలు",
-      corporateInfo: "కార్పొరేట్ సమాచారం", contactUs: "మమ్మల్ని సంప్రదించండి",
-      speedTest: "స్పీడ్ టెస్ట్", legalNotices: "చట్టపరమైన నోటీసులు",
-      onlyOnKflix: "KFLIX లో మాత్రమే", brandNote: "KFLIX భారత్ · KCNX WebOS 2026"
-    },
-    bn: {
-      heroHeadline: "আনলিমিটেড সিনেমা, শো এবং আরও অনেক কিছু",
-      btnLabel: "শুরু করুন",
-      footerCall: "প্রশ্ন আছে? কল করুন 000-800-919-1694",
-      faq: "সচরাচর জিজ্ঞাসিত প্রশ্ন", helpCentre: "সহায়তা কেন্দ্র",
-      account: "অ্যাকাউন্ট", mediaCentre: "মিডিয়া সেন্টার",
-      investorRelations: "বিনিয়োগকারী সম্পর্ক", jobs: "চাকরি",
-      waysToWatch: "দেখার উপায়", termsOfUse: "ব্যবহারের শর্তাবলী",
-      privacy: "গোপনীয়তা", cookiePreferences: "কুকি পছন্দ",
-      corporateInfo: "কর্পোরেট তথ্য", contactUs: "আমাদের সাথে যোগাযোগ করুন",
-      speedTest: "স্পিড টেস্ট", legalNotices: "আইনি নোটিশ",
-      onlyOnKflix: "শুধুমাত্র KFLIX-এ", brandNote: "KFLIX ভারত · KCNX WebOS 2026"
-    },
-    gu: {
-      heroHeadline: "અમર્યાદિત ફિલ્મો, શો અને વધુ",
-      btnLabel: "શરૂ કરો",
-      footerCall: "પ્રશ્નો છે? કૉલ કરો 000-800-919-1694",
-      faq: "વારંવાર પૂછાતા પ્રશ્નો", helpCentre: "સહાય કેન્દ્ર",
-      account: "ખાતું", mediaCentre: "મીડિયા કેન્દ્ર",
-      investorRelations: "રોકાણકાર સંબંધો", jobs: "નોકરીઓ",
-      waysToWatch: "જોવાની રીતો", termsOfUse: "ઉપયોગની શરતો",
-      privacy: "ગોપનીયતા", cookiePreferences: "કૂકી પસંદગીઓ",
-      corporateInfo: "કોર્પોરેટ માહિતી", contactUs: "અમારો સંપર્ક કરો",
-      speedTest: "સ્પીડ ટેસ્ટ", legalNotices: "કાનૂની સૂચનાઓ",
-      onlyOnKflix: "ફક્ત KFLIX પર", brandNote: "KFLIX ભારત · KCNX WebOS 2026"
-    },
-    kn: {
-      heroHeadline: "ಅಪರಿಮಿತ ಚಲನಚಿತ್ರಗಳು, ಕಾರ್ಯಕ್ರಮಗಳು ಮತ್ತು ಇನ್ನಷ್ಟು",
-      btnLabel: "ಪ್ರಾರಂಭಿಸಿ",
-      footerCall: "ಪ್ರಶ್ನೆಗಳಿವೆಯೇ? ಕರೆ ಮಾಡಿ 000-800-919-1694",
-      faq: "ಪದೇ ಪದೇ ಕೇಳಲಾಗುವ ಪ್ರಶ್ನೆಗಳು", helpCentre: "ಸಹಾಯ ಕೇಂದ್ರ",
-      account: "ಖಾತೆ", mediaCentre: "ಮೀಡಿಯಾ ಕೇಂದ್ರ",
-      investorRelations: "ಹೂಡಿಕೆದಾರರ ಸಂಬಂಧಗಳು", jobs: "ಉದ್ಯೋಗಗಳು",
-      waysToWatch: "ವೀಕ್ಷಿಸುವ ವಿಧಾನಗಳು", termsOfUse: "ಬಳಕೆಯ ನಿಯಮಗಳು",
-      privacy: "ಗೋಪ್ಯತೆ", cookiePreferences: "ಕುಕಿ ಆದ್ಯತೆಗಳು",
-      corporateInfo: "ಕಾರ್ಪೊರೇಟ್ ಮಾಹಿತಿ", contactUs: "ನಮ್ಮನ್ನು ಸಂಪರ್ಕಿಸಿ",
-      speedTest: "ವೇಗ ಪರೀಕ್ಷೆ", legalNotices: "ಕಾನೂನು ಸೂಚನೆಗಳು",
-      onlyOnKflix: "KFLIX ನಲ್ಲಿ ಮಾತ್ರ", brandNote: "KFLIX ಭಾರತ · KCNX WebOS 2026"
-    },
-    ml: {
-      heroHeadline: "പരിധിയില്ലാത്ത സിനിമകൾ, ഷോകൾ, ഒപ്പം ഒരുപാട് കൂടി",
-      btnLabel: "ആരംഭിക്കുക",
-      footerCall: "ചോദ്യങ്ങളുണ്ടോ? വിളിക്കുക 000-800-919-1694",
-      faq: "പതിവായി ചോദിക്കുന്ന ചോദ്യങ്ങൾ", helpCentre: "സഹായ കേന്ദ്രം",
-      account: "അക്കൗണ്ട്", mediaCentre: "മീഡിയ സെന്റർ",
-      investorRelations: "നിക്ഷേപക ബന്ധങ്ങൾ", jobs: "ജോലികൾ",
-      waysToWatch: "കാണാനുള്ള വഴികൾ", termsOfUse: "ഉപയോഗ നിബന്ധനകൾ",
-      privacy: "സ്വകാര്യത", cookiePreferences: "കുക്കി മുൻഗണനകൾ",
-      corporateInfo: "കോർപ്പറേറ്റ് വിവരങ്ങൾ", contactUs: "ഞങ്ങളെ ബന്ധപ്പെടുക",
-      speedTest: "സ്പീഡ് ടെസ്റ്റ്", legalNotices: "നിയമപരമായ അറിയിപ്പുകൾ",
-      onlyOnKflix: "KFLIX-ൽ മാത്രം", brandNote: "KFLIX ഇന്ത്യ · KCNX WebOS 2026"
-    },
-    pa: {
-      heroHeadline: "ਬੇਅੰਤ ਫ਼ਿਲਮਾਂ, ਸ਼ੋਅ ਅਤੇ ਹੋਰ ਬਹੁਤ ਕੁਝ",
-      btnLabel: "ਸ਼ੁਰੂ ਕਰੋ",
-      footerCall: "ਸਵਾਲ ਹਨ? ਕਾਲ ਕਰੋ 000-800-919-1694",
-      faq: "ਅਕਸਰ ਪੁੱਛੇ ਜਾਂਦੇ ਸਵਾਲ", helpCentre: "ਸਹਾਇਤਾ ਕੇਂਦਰ",
-      account: "ਖਾਤਾ", mediaCentre: "ਮੀਡੀਆ ਕੇਂਦਰ",
-      investorRelations: "ਨਿਵੇਸ਼ਕ ਸੰਬੰਧ", jobs: "ਨੌਕਰੀਆਂ",
-      waysToWatch: "ਦੇਖਣ ਦੇ ਤਰੀਕੇ", termsOfUse: "ਵਰਤੋਂ ਦੀਆਂ ਸ਼ਰਤਾਂ",
-      privacy: "ਗੋਪਨੀਯਤਾ", cookiePreferences: "ਕੂਕੀ ਤਰਜੀਹਾਂ",
-      corporateInfo: "ਕਾਰਪੋਰੇਟ ਜਾਣਕਾਰੀ", contactUs: "ਸਾਡੇ ਨਾਲ ਸੰਪਰਕ ਕਰੋ",
-      speedTest: "ਸਪੀਡ ਟੈਸਟ", legalNotices: "ਕਾਨੂੰਨੀ ਨੋਟਿਸ",
-      onlyOnKflix: "ਸਿਰਫ਼ KFLIX 'ਤੇ", brandNote: "KFLIX ਭਾਰਤ · KCNX WebOS 2026"
-    }
+    en:{heroHeadline:"Unlimited movies, shows, and more",btnLabel:"[ Get Started as Anonymous ]",footerCall:"Questions? Call 000-800-919-1694",faq:"FAQ",helpCentre:"Help Centre",account:"Account",mediaCentre:"Media Centre",investorRelations:"Investor Relations",jobs:"Jobs",waysToWatch:"Ways to Watch",termsOfUse:"Terms of Use",privacy:"Privacy",cookiePreferences:"Cookie Preferences",corporateInfo:"Corporate Information",contactUs:"Contact Us",speedTest:"Speed Test",legalNotices:"Legal Notices",onlyOnKflix:"Only on KCNXFLIX",brandNote:"KCNXFLIX · KCNX WebOS 2026"},
+    hi:{heroHeadline:"असीमित फिल्में, शोज़ और बहुत कुछ",btnLabel:"[ अनाम के रूप में शुरू करें ]",footerCall:"सवाल हैं? कॉल करें 000-800-919-1694",faq:"अक्सर पूछे जाने वाले प्रश्न",helpCentre:"सहायता केंद्र",account:"खाता",mediaCentre:"मीडिया केंद्र",investorRelations:"निवेशक संबंध",jobs:"नौकरियाँ",waysToWatch:"देखने के तरीके",termsOfUse:"उपयोग की शर्तें",privacy:"गोपनीयता",cookiePreferences:"कुकी प्राथमिकताएँ",corporateInfo:"कॉर्पोरेट जानकारी",contactUs:"संपर्क करें",speedTest:"स्पीड टेस्ट",legalNotices:"कानूनी सूचनाएँ",onlyOnKflix:"केवल KCNXFLIX पर",brandNote:"KCNXFLIX · KCNX WebOS 2026"},
+    mr:{heroHeadline:"अमर्यादित चित्रपट, मालिका आणि बरेच काही",btnLabel:"[ अनाम म्हणून सुरू करा ]",footerCall:"प्रश्न आहेत? कॉल करा 000-800-919-1694",faq:"वारंवार विचारले जाणारे प्रश्न",helpCentre:"मदत केंद्र",account:"खाते",mediaCentre:"मीडिया केंद्र",investorRelations:"गुंतवणूकदार संबंध",jobs:"नोकऱ्या",waysToWatch:"पाहण्याचे मार्ग",termsOfUse:"वापरण्याच्या अटी",privacy:"गोपनीयता",cookiePreferences:"कुकी प्राधान्ये",corporateInfo:"कॉर्पोरेट माहिती",contactUs:"आमच्याशी संपर्क साधा",speedTest:"स्पीड टेस्ट",legalNotices:"कायदेशीर सूचना",onlyOnKflix:"फक्त KCNXFLIX वर",brandNote:"KCNXFLIX · KCNX WebOS 2026"},
+    ta:{heroHeadline:"வரம்பற்ற திரைப்படங்கள், நிகழ்ச்சிகள் மற்றும் பல",btnLabel:"[ அநாமதேயமாக தொடங்குங்கள் ]",footerCall:"கேள்விகளா? அழைக்கவும் 000-800-919-1694",faq:"அடிக்கடி கேட்கப்படும் கேள்விகள்",helpCentre:"உதவி மையம்",account:"கணக்கு",mediaCentre:"ஊடக மையம்",investorRelations:"முதலீட்டாளர் உறவுகள்",jobs:"வேலைகள்",waysToWatch:"பார்க்கும் வழிகள்",termsOfUse:"பயன்பாட்டு விதிமுறைகள்",privacy:"தனியுரிமை",cookiePreferences:"குக்கீ விருப்பத்தேர்வுகள்",corporateInfo:"நிறுவனத் தகவல்",contactUs:"எங்களைத் தொடர்பு கொள்ளுங்கள்",speedTest:"வேகச் சோதனை",legalNotices:"சட்ட அறிவிப்புகள்",onlyOnKflix:"KCNXFLIX இல் மட்டும்",brandNote:"KCNXFLIX · KCNX WebOS 2026"},
+    te:{heroHeadline:"అపరిమిత సినిమాలు, షోలు మరియు మరిన్ని",btnLabel:"[ అనామకంగా ప్రారంభించండి ]",footerCall:"ప్రశ్నలు ఉన్నాయా? కాల్ చేయండి 000-800-919-1694",faq:"తరచుగా అడిగే ప్రశ్నలు",helpCentre:"సహాయ కేంద్రం",account:"ఖాతా",mediaCentre:"మీడియా కేంద్రం",investorRelations:"పెట్టుబడిదారుల సంబంధాలు",jobs:"ఉద్యోగాలు",waysToWatch:"వీక్షించే మార్గాలు",termsOfUse:"ఉపయోగ నిబంధనలు",privacy:"గోప్యత",cookiePreferences:"కుకీ ప్రాధాన్యతలు",corporateInfo:"కార్పొరేట్ సమాచారం",contactUs:"మమ్మల్ని సంప్రదించండి",speedTest:"స్పీడ్ టెస్ట్",legalNotices:"చట్టపరమైన నోటీసులు",onlyOnKflix:"KCNXFLIX లో మాత్రమే",brandNote:"KCNXFLIX · KCNX WebOS 2026"},
+    bn:{heroHeadline:"আনলিমিটেড সিনেমা, শো এবং আরও অনেক কিছু",btnLabel:"[ বেনামী হিসেবে শুরু করুন ]",footerCall:"প্রশ্ন আছে? কল করুন 000-800-919-1694",faq:"সচরাচর জিজ্ঞাসিত প্রশ্ন",helpCentre:"সহায়তা কেন্দ্র",account:"অ্যাকাউন্ট",mediaCentre:"মিডিয়া সেন্টার",investorRelations:"বিনিয়োগকারী সম্পর্ক",jobs:"চাকরি",waysToWatch:"দেখার উপায়",termsOfUse:"ব্যবহারের শর্তাবলী",privacy:"গোপনীয়তা",cookiePreferences:"কুকি পছন্দ",corporateInfo:"কর্পোরেট তথ্য",contactUs:"আমাদের সাথে যোগাযোগ করুন",speedTest:"স্পিড টেস্ট",legalNotices:"আইনি নোটিশ",onlyOnKflix:"শুধুমাত্র KCNXFLIX-এ",brandNote:"KCNXFLIX · KCNX WebOS 2026"},
+    gu:{heroHeadline:"અમર્યાદિત ફિલ્મો, શો અને વધુ",btnLabel:"[ અનામી તરીકે શરૂ કરો ]",footerCall:"પ્રશ્નો છે? કૉલ કરો 000-800-919-1694",faq:"વારંવાર પૂછાતા પ્રશ્નો",helpCentre:"સહાય કેન્દ્ર",account:"ખાતું",mediaCentre:"મીડિયા કેન્દ્ર",investorRelations:"રોકાણકાર સંબંધો",jobs:"નોકરીઓ",waysToWatch:"જોવાની રીતો",termsOfUse:"ઉપયોગની શરતો",privacy:"ગોપનીયતા",cookiePreferences:"કૂકી પસંદગીઓ",corporateInfo:"કોર્પોરેટ માહિતી",contactUs:"અમારો સંપર્ક કરો",speedTest:"સ્પીડ ટેસ્ટ",legalNotices:"કાનૂની સૂચનાઓ",onlyOnKflix:"ફક્ત KCNXFLIX પર",brandNote:"KCNXFLIX · KCNX WebOS 2026"},
+    kn:{heroHeadline:"ಅಪರಿಮಿತ ಚಲನಚಿತ್ರಗಳು, ಕಾರ್ಯಕ್ರಮಗಳು ಮತ್ತು ಇನ್ನಷ್ಟು",btnLabel:"[ ಅನಾಮಧೇಯರಾಗಿ ಪ್ರಾರಂಭಿಸಿ ]",footerCall:"ಪ್ರಶ್ನೆಗಳಿವೆಯೇ? ಕರೆ ಮಾಡಿ 000-800-919-1694",faq:"ಪದೇ ಪದೇ ಕೇಳಲಾಗುವ ಪ್ರಶ್ನೆಗಳು",helpCentre:"ಸಹಾಯ ಕೇಂದ್ರ",account:"ಖಾತೆ",mediaCentre:"ಮೀಡಿಯಾ ಕೇಂದ್ರ",investorRelations:"ಹೂಡಿಕೆದಾರರ ಸಂಬಂಧಗಳು",jobs:"ಉದ್ಯೋಗಗಳು",waysToWatch:"ವೀಕ್ಷಿಸುವ ವಿಧಾನಗಳು",termsOfUse:"ಬಳಕೆಯ ನಿಯಮಗಳು",privacy:"ಗೋಪ್ಯತೆ",cookiePreferences:"ಕುಕಿ ಆದ್ಯತೆಗಳು",corporateInfo:"ಕಾರ್ಪೊರೇಟ್ ಮಾಹಿತಿ",contactUs:"ನಮ್ಮನ್ನು ಸಂಪರ್ಕಿಸಿ",speedTest:"ವೇಗ ಪರೀಕ್ಷೆ",legalNotices:"ಕಾನೂನು ಸೂಚನೆಗಳು",onlyOnKflix:"KCNXFLIX ನಲ್ಲಿ ಮಾತ್ರ",brandNote:"KCNXFLIX · KCNX WebOS 2026"},
+    ml:{heroHeadline:"പരിധിയില്ലാത്ത സിനിമകൾ, ഷോകൾ, ഒപ്പം ഒരുപാട് കൂടി",btnLabel:"[ അനാമധേയമായി ആരംഭിക്കുക ]",footerCall:"ചോദ്യങ്ങളുണ്ടോ? വിളിക്കുക 000-800-919-1694",faq:"പതിവായി ചോദിക്കുന്ന ചോദ്യങ്ങൾ",helpCentre:"സഹായ കേന്ദ്രം",account:"അക്കൗണ്ട്",mediaCentre:"മീഡിയ സെന്റർ",investorRelations:"നിക്ഷേപക ബന്ധങ്ങൾ",jobs:"ജോലികൾ",waysToWatch:"കാണാനുള്ള വഴികൾ",termsOfUse:"ഉപയോഗ നിബന്ധനകൾ",privacy:"സ്വകാര്യത",cookiePreferences:"കുക്കി മുൻഗണനകൾ",corporateInfo:"കോർപ്പറേറ്റ് വിവരങ്ങൾ",contactUs:"ഞങ്ങളെ ബന്ധപ്പെടുക",speedTest:"സ്പീഡ് ടെസ്റ്റ്",legalNotices:"നിയമപരമായ അറിയിപ്പുകൾ",onlyOnKflix:"KCNXFLIX-ൽ മാത്രം",brandNote:"KCNXFLIX · KCNX WebOS 2026"},
+    pa:{heroHeadline:"ਬੇਅੰਤ ਫ਼ਿਲਮਾਂ, ਸ਼ੋਅ ਅਤੇ ਹੋਰ ਬਹੁਤ ਕੁਝ",btnLabel:"[ ਗੁਮਨਾਮ ਵਜੋਂ ਸ਼ੁਰੂ ਕਰੋ ]",footerCall:"ਸਵਾਲ ਹਨ? ਕਾਲ ਕਰੋ 000-800-919-1694",faq:"ਅਕਸਰ ਪੁੱਛੇ ਜਾਂਦੇ ਸਵਾਲ",helpCentre:"ਸਹਾਇਤਾ ਕੇਂਦਰ",account:"ਖਾਤਾ",mediaCentre:"ਮੀਡੀਆ ਕੇਂਦਰ",investorRelations:"ਨਿਵੇਸ਼ਕ ਸੰਬੰਧ",jobs:"ਨੌਕਰੀਆਂ",waysToWatch:"ਦੇਖਣ ਦੇ ਤਰੀਕੇ",termsOfUse:"ਵਰਤੋਂ ਦੀਆਂ ਸ਼ਰਤਾਂ",privacy:"ਗੋਪਨੀਯਤਾ",cookiePreferences:"ਕੂਕੀ ਤਰਜੀਹਾਂ",corporateInfo:"ਕਾਰਪੋਰੇਟ ਜਾਣਕਾਰੀ",contactUs:"ਸਾਡੇ ਨਾਲ ਸੰਪਰਕ ਕਰੋ",speedTest:"ਸਪੀਡ ਟెస్ట్",legalNotices:"ਕਾਨੂੰਨੀ ਨੋਟਿਸ",onlyOnKflix:"ਸਿਰਫ਼ KCNXFLIX 'ਤੇ",brandNote:"KCNXFLIX · KCNX WebOS 2026"}
   };
 
   /* ============================================================
      LANGUAGE SWITCHING
      ============================================================ */
-  var langSelect = document.getElementById("langSelect");
+  var langSelect   = document.getElementById("langSelect");
   var heroHeadline = document.getElementById("heroHeadline");
-  var btnLabel = document.getElementById("btnLabel");
+  var btnLabel     = document.getElementById("btnLabel");
 
   function applyLanguage(lang) {
     var dict = I18N[lang] || I18N.en;
-
     heroHeadline.textContent = dict.heroHeadline;
     btnLabel.textContent = dict.btnLabel;
 
@@ -572,59 +463,74 @@
       var key = node.getAttribute("data-i18n");
       if (dict[key]) node.textContent = dict[key];
     });
-
     document.documentElement.lang = lang;
   }
-
-  langSelect.addEventListener("change", function () {
-    applyLanguage(this.value);
-  });
-
+  langSelect.addEventListener("change", function () { applyLanguage(this.value); });
   applyLanguage("en");
 
   /* ============================================================
-     INTRO VIDEO -> EMBEDDED SITE
+     ELEMENTS
      ============================================================ */
-  var intro        = document.getElementById("intro");
-  var video        = document.getElementById("introVideo");
-  var embedStage   = document.getElementById("embedStage");
-  var siteFrame    = document.getElementById("siteFrame");
-  var embedLoader  = document.getElementById("embedLoader");
-  var fallbackLink = document.getElementById("fallbackLink");
+  var intro         = document.getElementById("intro");
+  var video         = document.getElementById("introVideo");
+  var embedStage    = document.getElementById("embedStage");
+  var siteFrame     = document.getElementById("siteFrame");
+  var bgMusic       = document.getElementById("bgMusic");
+  var getStartedBtn = document.getElementById("getStartedBtn");
+  var homeBtn       = document.getElementById("homeBtn");
 
   var videoTimer = null;
-  var embedTimer = null;
   var started    = false;
+  var musicPlayedOnce = false;
 
+  /* ============================================================
+     MUSIC (PLAYS ONE TIME ON ENTRY)
+     ============================================================ */
+  function playMusicOnce() {
+    if (musicPlayedOnce) return;
+    musicPlayedOnce = true;
+    bgMusic.loop = false;
+    bgMusic.currentTime = 0;
+    bgMusic.volume = 0.55;
+    var p = bgMusic.play();
+    if (p && typeof p.catch === "function") {
+      p.catch(function () {
+        musicPlayedOnce = false;
+        var retryOnce = function () {
+          window.removeEventListener("pointerdown", retryOnce);
+          window.removeEventListener("keydown", retryOnce);
+          window.removeEventListener("touchstart", retryOnce);
+          if (!musicPlayedOnce) {
+            musicPlayedOnce = true;
+            bgMusic.loop = false;
+            bgMusic.currentTime = 0;
+            bgMusic.volume = 0.55;
+            bgMusic.play().catch(function () {});
+          }
+        };
+        window.addEventListener("pointerdown", retryOnce, { passive: true, once: true });
+        window.addEventListener("keydown", retryOnce, { once: true });
+        window.addEventListener("touchstart", retryOnce, { passive: true, once: true });
+      });
+    }
+  }
+
+  /* ============================================================
+     VIDEO -> FULL-PAGE IFRAME
+     ============================================================ */
   function showEmbed() {
     if (videoTimer) { clearTimeout(videoTimer); videoTimer = null; }
 
-    // Switch from video stage to iframe stage
     try { video.pause(); } catch (e) {}
     video.style.display = "none";
     embedStage.classList.add("active");
 
-    siteFrame.src = EMBED_URL;
-
-    // Hide loader once the frame reports load (may not fire if blocked)
-    siteFrame.addEventListener("load", function () {
-      embedLoader.classList.add("hide");
-    }, { once: true });
-
-    // If the embed is blocked (X-Frame-Options / CSP), the load event
-    // may still fire on some browsers. Give the user a clear fallback.
-    embedTimer = setTimeout(function () {
-      embedLoader.classList.add("hide");
-      // Show the fallback link prominently
-      fallbackLink.style.borderColor = "var(--red)";
-      fallbackLink.style.color = "#fff";
-    }, EMBED_TIMEOUT);
+    if (!siteFrame.src || siteFrame.src === "about:blank") {
+      siteFrame.src = EMBED_URL;
+    }
   }
 
-  function launchIntro() {
-    if (started) return;
-    started = true;
-
+  function playIntro() {
     intro.classList.add("show");
     intro.setAttribute("aria-hidden", "false");
     document.body.classList.add("locked");
@@ -636,31 +542,52 @@
     var playPromise = video.play();
     if (playPromise && typeof playPromise.catch === "function") {
       playPromise.catch(function () {
-        // Autoplay blocked — skip straight to the embed
-        showEmbed();
+        video.muted = true;
+        video.play().catch(function () { showEmbed(); });
       });
     }
 
-    // If the video never ends, move on anyway
-    videoTimer = setTimeout(showEmbed, VIDEO_TIMEOUT);
+    if (!videoTimer) {
+      videoTimer = setTimeout(showEmbed, VIDEO_TIMEOUT);
+    }
   }
 
-  document.getElementById("getStartedBtn").addEventListener("click", launchIntro);
-
+  video.addEventListener("playing", function () { started = true; });
   video.addEventListener("ended", showEmbed);
   video.addEventListener("error", showEmbed);
 
-  /* Reset when user navigates back */
+  /* ============================================================
+     GET STARTED
+     ============================================================ */
+  getStartedBtn.addEventListener("click", function () {
+    playMusicOnce();
+    if (started) return;
+    playIntro();
+  });
+
+  /* ============================================================
+     HOME BUTTON
+     ============================================================ */
+  homeBtn.addEventListener("click", function () {
+    siteFrame.src = "about:blank";
+    setTimeout(function () {
+      siteFrame.src = EMBED_URL;
+    }, 20);
+  });
+
+  /* ============================================================
+     RESET ON BACK NAV
+     ============================================================ */
   window.addEventListener("pageshow", function (ev) {
     if (ev.persisted) {
       started = false;
+      musicPlayedOnce = false;
       if (videoTimer) { clearTimeout(videoTimer); videoTimer = null; }
-      if (embedTimer) { clearTimeout(embedTimer); embedTimer = null; }
       try { video.pause(); video.currentTime = 0; } catch (e) {}
+      try { bgMusic.pause(); bgMusic.currentTime = 0; } catch (e) {}
       video.style.display = "";
       embedStage.classList.remove("active");
       siteFrame.src = "";
-      embedLoader.classList.remove("hide");
       intro.classList.remove("show");
       intro.setAttribute("aria-hidden", "true");
       document.body.classList.remove("locked");
