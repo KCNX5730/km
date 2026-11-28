@@ -3,596 +3,1804 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
-<meta name="theme-color" content="#000000">
-<title>KCNXFLIX INDIA</title>
+<meta name="theme-color" content="#0d0618">
+<title>KCNXFLIX</title>
 
-<!-- ================= WEB ICONS / PWA ================= -->
 <link rel="icon" type="image/png" href="https://files.catbox.moe/4u5ypw.png">
 <link rel="apple-touch-icon" href="https://files.catbox.moe/4u5ypw.png">
-<link rel="manifest" href='data:application/manifest+json,{"name":"KCNXFLIX","short_name":"KCNXFLIX","start_url":"/","display":"standalone","background_color":"%23000000","theme_color":"%23e2262c","icons":[{"src":"https://files.catbox.moe/4u5ypw.png","sizes":"512x512","type":"image/png","purpose":"any"},{"src":"https://files.catbox.moe/4u5ypw.png","sizes":"192x192","type":"image/png","purpose":"any"}]}'>
+<link rel="manifest" href='data:application/manifest+json,{"name":"KCNXFLIX","short_name":"KCNXFLIX","start_url":"/","display":"standalone","background_color":"%230d0618","theme_color":"%23e2262c","icons":[{"src":"https://files.catbox.moe/4u5ypw.png","sizes":"512x512","type":"image/png","purpose":"any"}]}'>
+
+<!-- Firebase SDK v10.12.0 -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import {
+    getAuth,
+    GoogleAuthProvider,
+    signInWithPopup,
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    sendEmailVerification,
+    sendSignInLinkToEmail,
+    isSignInWithEmailLink,
+    signInWithEmailLink,
+    onAuthStateChanged,
+    signOut
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDZW2thbHNWMpm1FAbW1-sbx911QOQZq8k",
+    authDomain: "kcnxflix-india.firebaseapp.com",
+    projectId: "kcnxflix-india",
+    storageBucket: "kcnxflix-india.firebasestorage.app",
+    messagingSenderId: "763969371043",
+    appId: "1:763969371043:web:f205e15b2c1b000b30b816"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const googleProvider = new GoogleAuthProvider();
+
+  window.__kcnxFirebase = {
+    app,
+    auth,
+    googleProvider,
+    signInWithPopup,
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    sendEmailVerification,
+    sendSignInLinkToEmail,
+    isSignInWithEmailLink,
+    signInWithEmailLink,
+    onAuthStateChanged,
+    signOut
+  };
+
+  if (isSignInWithEmailLink(auth, window.location.href)) {
+    let email = window.localStorage.getItem("kcnx_email_for_signin");
+    if (!email) {
+      email = window.prompt("Confirm your email address to complete sign-in:");
+    }
+    if (email) {
+      signInWithEmailLink(auth, email, window.location.href)
+        .then((cred) => {
+          window.localStorage.removeItem("kcnx_email_for_signin");
+          window.history.replaceState({}, document.title, window.location.pathname);
+          if (window.__onKcnxAuthSuccess) window.__onKcnxAuthSuccess(cred.user);
+        })
+        .catch((err) => {
+          const statusEl = document.getElementById("authStatus");
+          if (statusEl) statusEl.textContent = err.message || "Email verification link failed.";
+        });
+    }
+  }
+
+  onAuthStateChanged(auth, (user) => {
+    if (window.__onKcnxAuthChanged) {
+      window.__onKcnxAuthChanged(user && !user.isAnonymous ? user : null);
+    }
+  });
+</script>
 
 <style>
   :root{
+    --kcnx-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Helvetica Neue", Arial, "Noto Sans", sans-serif;
     --red:#e2262c;
     --red-dark:#b81c22;
-    --bg:#000;
-    --muted:rgba(255,255,255,.7);
-    --maxw:1100px;
+    --bg:#0b0812;
+    --card-bg:#140f22;
+    --muted:rgba(255,255,255,.72);
+    --ease:cubic-bezier(.2,.8,.2,1);
   }
-
   *{box-sizing:border-box;margin:0;padding:0}
   html{scroll-behavior:smooth}
-  html,body{height:100%}
   body{
-    background:var(--bg);
-    color:#fff;
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    background:var(--bg);color:#fff;
+    font-family:var(--kcnx-sans);
     -webkit-font-smoothing:antialiased;
     overflow-x:hidden;
-    touch-action:manipulation;
-    -webkit-tap-highlight-color:transparent;
   }
   body.locked{overflow:hidden}
-  img{max-width:100%;display:block}
-  button{font-family:inherit}
-  .sr-only{
-    position:absolute;width:1px;height:1px;padding:0;margin:-1px;
-    overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
-  }
+  img{display:block;max-width:100%}
+  button,input,select{font-family:inherit;color:inherit}
+  button{cursor:pointer;border:0;background:none}
 
-  /* ============ INTRO OVERLAY ============ */
-  .intro{
-    position:fixed;inset:0;z-index:9999;
-    background:#000;
-    display:flex;align-items:center;justify-content:center;
-    opacity:0;visibility:hidden;
-    transition:opacity .35s ease,visibility .35s ease;
-    overflow:hidden;
-  }
-  .intro.show{opacity:1;visibility:visible}
-  .intro video{
-    width:100%;height:100%;
-    max-width:100vw;max-height:100vh;
-    object-fit:contain;background:#000;outline:none;
-  }
-
-  .intro .embed-stage{
-    position:absolute;inset:0;
-    display:none;background:#000;
-    flex-direction:column;
-    width:100%;height:100%;
-  }
-  .intro .embed-stage.active{display:flex}
-
-  /* ============ FLOATING HOME BUTTON (bottom-right, unobstructed) ============ */
-  .home-btn{
-    position:fixed;
-    bottom:16px;right:16px;z-index:20;
-    width:44px;height:44px;
-    border-radius:50%;
-    background:rgba(20,20,22,.88);
-    border:1px solid rgba(255,255,255,.25);
-    color:#fff;cursor:pointer;
-    display:flex;align-items:center;justify-content:center;
-    backdrop-filter:blur(10px);
-    -webkit-backdrop-filter:blur(10px);
-    box-shadow:0 4px 16px rgba(0,0,0,.6);
-    transition:background .15s,border-color .15s,transform .15s;
-  }
-  .home-btn:hover{
-    background:var(--red);
-    border-color:var(--red);
-    transform:scale(1.06);
-  }
-  .home-btn:active{transform:scale(.95)}
-  .home-btn svg{width:19px;height:19px}
-
-  /* ============ FULL-PAGE IFRAME (NO CROPPING) ============ */
-  .embed-frame-wrap{
+  /* ============ FULL-PAGE GEMINI PURPLE & EVENING SUN FLOW ============ */
+  .getstarted{
     position:relative;
-    flex:1 1 auto;
-    width:100%;height:100%;
-    background:#000;
+    width:100vw;
+    min-height:100vh;
+    min-height:100svh;
     overflow:hidden;
   }
-  .embed-frame-wrap iframe{
-    width:100%;
-    height:100%;
-    margin-top:0;
-    border:0;
-    display:block;
-    background:#000;
+  .gs-header{
+    position:absolute;top:0;left:0;right:0;z-index:20;
+    display:flex;align-items:center;justify-content:space-between;gap:1rem;
+    padding:1.3rem clamp(1rem,4vw,3.5rem);
+    background:linear-gradient(180deg,rgba(10,5,22,.82),transparent);
   }
+  .logo{display:flex;align-items:center;gap:.7rem;flex-shrink:0}
+  .logo img.main{width:clamp(34px,4.8vw,48px);height:auto}
+  .logo img.text{height:clamp(28px,4vw,40px);width:auto}
 
-  /* ============ HEADER ============ */
-  .header{
-    position:absolute;top:0;left:0;right:0;z-index:40;
-    display:flex;align-items:center;justify-content:space-between;
-    gap:1rem;
-    padding:1.4rem clamp(1rem,4vw,3.5rem);
-    background:linear-gradient(180deg,rgba(0,0,0,.85),transparent);
-  }
-  .logo{
-    display:inline-flex;align-items:center;gap:.65rem;line-height:1;
-  }
-  .logo .main-logo,
-  .logo .text-logo{
-    width:44px;height:44px;
-    object-fit:contain;
-    filter:drop-shadow(0 0 12px rgba(226,38,44,.55));
-  }
-
+  .header-right{display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;justify-content:flex-end}
   .lang-wrap{position:relative;display:inline-flex;align-items:center}
   .lang-select{
     appearance:none;-webkit-appearance:none;
-    background:rgba(0,0,0,.55);color:#fff;
-    border:1px solid rgba(255,255,255,.4);border-radius:4px;
-    padding:.5rem 2.2rem .5rem 2.4rem;font-size:.95rem;cursor:pointer;
+    background:rgba(15,10,30,.68);color:#fff;
+    border:1px solid rgba(255,255,255,.32);border-radius:8px;
+    padding:.48rem 2.1rem .48rem 2.3rem;font-size:.88rem;
+    backdrop-filter:blur(10px);cursor:pointer;
     background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.4'><path d='M6 9l6 6 6-6'/></svg>");
-    background-repeat:no-repeat;background-position:right .7rem center;
+    background-repeat:no-repeat;background-position:right .65rem center;
   }
   .lang-wrap::before{
-    content:"";position:absolute;left:.75rem;width:16px;height:16px;pointer-events:none;
+    content:"";position:absolute;left:.7rem;width:15px;height:15px;pointer-events:none;
     background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.8'><circle cx='12' cy='12' r='9'/><path d='M3 12h18M12 3c2.5 3 2.5 15 0 18M12 3c-2.5 3-2.5 15 0 18'/></svg>") center/contain no-repeat;
   }
 
-  /* ============ HERO ============ */
-  .hero{
+  .gs-hero{
     position:relative;
-    min-height:100vh;min-height:100svh;
-    display:flex;flex-direction:column;
-    align-items:center;justify-content:center;
-    text-align:center;
-    padding:9rem 1.25rem 7rem;
-    overflow:hidden;
+    width:100%;
+    min-height:100vh;
+    min-height:100svh;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:7rem 1.25rem 5rem;overflow:hidden;
   }
 
-  /* FAST HORIZONTAL RGB FLOW */
-  .hero-bg{
-    position:absolute;inset:0;z-index:0;
-    background:linear-gradient(
-      90deg,
-      #87ceeb 0%,
-      #00008b 12.5%,
-      #8a2be2 25%,
-      #ff00ff 37.5%,
-      #ffa500 50%,
-      #ff2020 62.5%,
-      #00ff00 75%,
-      #0000ff 87.5%,
-      #87ceeb 100%
+  .gs-hero .bg{
+    position:fixed;
+    inset:0;
+    z-index:0;
+    background: linear-gradient(
+      135deg,
+      #0f0722 0%,
+      #251459 22%,
+      #4c1d95 44%,
+      #7e22ce 62%,
+      #c2410c 82%,
+      #fb923c 100%
     );
-    background-size:300% 100%;
-    animation:rgbFlowH 6s linear infinite;
-  }
-  .hero-bg::after{
-    content:"";position:absolute;inset:0;
-    background:radial-gradient(ellipse at center,transparent 32%,rgba(0,0,0,.78) 100%);
-    pointer-events:none;
-  }
-  @keyframes rgbFlowH{
-    0%{background-position:0% 50%}
-    100%{background-position:300% 50%}
+    background-size: 300% 300%;
+    animation: geminiEveningFlow 14s ease-in-out infinite alternate;
   }
 
-  .hero-content{
-    position:relative;z-index:3;
-    width:100%;max-width:720px;
+  .gs-hero .evening-sun{
+    position:fixed;
+    bottom:-14vh;
+    left:50%;
+    transform:translateX(-50%);
+    width:min(76vw, 680px);
+    height:min(76vw, 680px);
+    border-radius:50%;
+    z-index:0;
+    pointer-events:none;
+    background:radial-gradient(
+      circle,
+      rgba(255, 214, 153, 0.92) 0%,
+      rgba(255, 126, 51, 0.72) 28%,
+      rgba(219, 39, 119, 0.34) 58%,
+      rgba(124, 58, 237, 0) 76%
+    );
+    filter:blur(18px);
+    animation: sunPulse 9s ease-in-out infinite alternate;
+  }
+
+  .gs-hero .bg::after{
+    content:"";position:absolute;inset:0;
+    background:radial-gradient(ellipse at 50% 45%, rgba(15,8,34,.18) 0%, rgba(7,4,16,.84) 100%);
+  }
+
+  @keyframes geminiEveningFlow{
+    0%{background-position:0% 20%}
+    50%{background-position:70% 80%}
+    100%{background-position:100% 35%}
+  }
+  @keyframes sunPulse{
+    0%{transform:translateX(-50%) translateY(4%) scale(0.96);opacity:.85}
+    100%{transform:translateX(-50%) translateY(-3%) scale(1.06);opacity:1}
+  }
+
+  .gs-hero .content{
+    position:relative;z-index:2;max-width:740px;
     display:flex;flex-direction:column;align-items:center;
   }
-  .hero-icon{
-    width:clamp(84px,16vw,140px);height:auto;
-    margin-bottom:1.25rem;
-    filter:drop-shadow(0 0 26px rgba(226,38,44,.7));
+  .gs-hero .content > img{
+    width:clamp(80px,14vw,125px);margin-bottom:1.2rem;
+    filter:drop-shadow(0 0 30px rgba(251,146,60,.65));
     animation:iconFloat 5s ease-in-out infinite;
   }
-  @keyframes iconFloat{
-    0%,100%{transform:translateY(0)}
-    50%{transform:translateY(-8px)}
+  @keyframes iconFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+  .gs-hero h1{
+    font-size:clamp(1.9rem,5.2vw,3.6rem);font-weight:900;line-height:1.08;
+    text-shadow:0 4px 28px rgba(0,0,0,.78);
   }
-  .hero h1{
-    font-size:clamp(1.9rem,5.2vw,3.6rem);
-    font-weight:900;line-height:1.1;
-    letter-spacing:-.01em;
-    text-shadow:0 2px 24px rgba(0,0,0,.85);
-  }
-
-  .hero-curve{
-    position:absolute;left:50%;bottom:-2px;z-index:2;
-    transform:translateX(-50%);
-    width:150%;height:90px;background:#000;
-    border-radius:50% 50% 0 0 / 100% 100% 0 0;
-    pointer-events:none;
+  .gs-sub{
+    margin-top:.85rem;font-size:clamp(.95rem,1.8vw,1.18rem);
+    color:rgba(255,245,235,.88);max-width:560px;
+    text-shadow:0 2px 14px rgba(0,0,0,.7);
   }
 
-  /* ============ BUTTON ============ */
   .btn-primary{
-    display:inline-flex;align-items:center;justify-content:center;gap:.45rem;
-    background:var(--red);color:#fff;border:0;border-radius:4px;
-    padding:1rem 2.2rem;
-    font-size:clamp(1.05rem,2.2vw,1.45rem);
-    font-weight:700;cursor:pointer;white-space:nowrap;
-    transition:background .2s,transform .1s,box-shadow .2s;
-    margin-top:1.6rem;
-    box-shadow:0 0 0 0 rgba(226,38,44,0);
-    touch-action:manipulation;
+    display:inline-flex;align-items:center;gap:.55rem;
+    background:linear-gradient(135deg,#e2262c,#ea580c);color:#fff;border-radius:8px;
+    padding:1rem 2.1rem;font-size:clamp(1rem,1.9vw,1.18rem);font-weight:700;
+    margin-top:1.75rem;
+    box-shadow:0 10px 28px rgba(226,38,44,.45);
+    transition:transform .15s,box-shadow .2s,filter .2s;
   }
-  .btn-primary:hover{
-    background:var(--red-dark);
-    box-shadow:0 0 26px rgba(226,38,44,.55);
-  }
+  .btn-primary:hover{filter:brightness(1.08);box-shadow:0 12px 34px rgba(251,146,60,.55);transform:translateY(-1px)}
   .btn-primary:active{transform:scale(.975)}
-  .btn-primary svg{width:22px;height:22px}
+  .btn-primary svg{width:20px;height:20px}
 
-  /* ============ FOOTER ============ */
-  .footer{
-    max-width:var(--maxw);margin:0 auto;
-    padding:3rem clamp(1rem,4vw,1.5rem) 4rem;
-    color:var(--muted);font-size:.88rem;
+  /* ============ FIREBASE FULL SIGN-IN MODAL ============ */
+  .auth-modal{
+    position:fixed;inset:0;z-index:800;
+    background:rgba(7,4,16,.86);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    display:none;align-items:center;justify-content:center;padding:1rem;
   }
-  .footer .q{margin-bottom:1.5rem;display:flex;align-items:center;gap:.5rem}
-  .footer .q svg{flex:0 0 auto;opacity:.85}
-  .footer a{
-    color:var(--muted);text-decoration:none;
-    display:inline-flex;align-items:center;gap:.35rem;
-    transition:color .15s;
+  .auth-modal.show{display:flex}
+  .auth-box{
+    position:relative;width:100%;max-width:440px;
+    background:linear-gradient(165deg,rgba(28,16,56,.97),rgba(14,9,28,.99));
+    border:1px solid rgba(196,181,253,.28);
+    border-radius:16px;padding:2rem 1.75rem;
+    box-shadow:0 24px 60px rgba(0,0,0,.85),0 0 40px rgba(124,58,237,.25);
+    animation:fadeUp .35s var(--ease) both;
   }
-  .footer a:hover{color:#fff}
-  .footer a svg{flex:0 0 auto;opacity:.7}
-  .footer-grid{
-    display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
-    gap:.85rem 1.25rem;margin-bottom:1.75rem;
+  .auth-close{
+    position:absolute;top:.9rem;right:.9rem;width:34px;height:34px;
+    border-radius:50%;background:rgba(255,255,255,.08);
+    display:flex;align-items:center;justify-content:center;color:#ddd;
   }
-  .footer .brand-note{
-    font-size:.8rem;color:rgba(255,255,255,.45);
-    display:flex;align-items:center;gap:.4rem;
-  }
-  .footer .brand-note svg{opacity:.6}
+  .auth-close:hover{background:rgba(255,255,255,.18);color:#fff}
+  .auth-box h2{font-size:1.5rem;font-weight:800;margin-bottom:.3rem}
+  .auth-box p.sub{font-size:.86rem;color:rgba(255,255,255,.72);margin-bottom:1.25rem}
 
-  @media (max-width:640px){
-    .hero{padding:8rem 1.25rem 6rem}
-    .logo .main-logo,
-    .logo .text-logo{width:38px;height:38px}
-    .home-btn{width:40px;height:40px;bottom:12px;right:12px}
-    .home-btn svg{width:17px;height:17px}
+  .auth-tabs{
+    display:grid;grid-template-columns:1fr 1fr;gap:.45rem;
+    background:rgba(255,255,255,.06);padding:.28rem;border-radius:10px;margin-bottom:1.1rem;
+  }
+  .auth-tab{
+    padding:.5rem .75rem;border-radius:7px;font-size:.82rem;font-weight:700;
+    color:rgba(255,255,255,.72);transition:all .2s;
+  }
+  .auth-tab.active{background:rgba(124,58,237,.45);color:#fff}
+
+  .btn-google{
+    width:100%;display:flex;align-items:center;justify-content:center;gap:.65rem;
+    background:#fff;color:#111;font-weight:700;font-size:.95rem;
+    padding:.8rem 1rem;border-radius:8px;
+    transition:background .2s,transform .12s;
+  }
+  .btn-google:hover{background:#f3f4f6;transform:translateY(-1px)}
+
+  .auth-divider{
+    display:flex;align-items:center;gap:.75rem;
+    margin:1.15rem 0;color:rgba(255,255,255,.45);font-size:.75rem;text-transform:uppercase;letter-spacing:.1em;
+  }
+  .auth-divider::before,.auth-divider::after{
+    content:"";flex:1;height:1px;background:rgba(255,255,255,.15);
+  }
+
+  .auth-input{
+    width:100%;background:rgba(255,255,255,.07);
+    border:1px solid rgba(255,255,255,.22);border-radius:8px;
+    padding:.78rem .95rem;color:#fff;font-size:.92rem;
+    margin-bottom:.7rem;outline:none;transition:border-color .2s;
+  }
+  .auth-input:focus{border-color:#fb923c}
+
+  .btn-submit{
+    width:100%;background:linear-gradient(135deg,#7c3aed,#ea580c);
+    color:#fff;font-weight:700;font-size:.93rem;
+    padding:.8rem 1rem;border-radius:8px;
+    transition:filter .2s;
+  }
+  .btn-submit:hover{filter:brightness(1.1)}
+  .auth-status{
+    margin-top:.75rem;font-size:.82rem;color:#fdba74;min-height:1.2rem;text-align:center;line-height:1.4;
+  }
+
+  /* ============ INTRO ============ */
+  .intro{
+    position:fixed;inset:0;z-index:9999;background:#000;
+    display:flex;align-items:center;justify-content:center;
+    opacity:0;visibility:hidden;transition:opacity .35s,visibility .35s;
+  }
+  .intro.show{opacity:1;visibility:visible}
+  .intro video{width:100%;height:100%;object-fit:contain;background:#000}
+
+  /* ============ APP ============ */
+  .app{display:none;background:#0b0812;min-height:100vh}
+  .app.active{display:block}
+
+  .topbar{
+    position:fixed;top:0;left:0;right:0;z-index:60;
+    display:flex;align-items:center;justify-content:space-between;gap:.8rem;
+    padding:1rem clamp(1rem,4vw,3.5rem);
+    background:linear-gradient(180deg,rgba(11,8,18,.9),transparent);
+    transition:background .3s,padding .3s;
+  }
+  .topbar.scrolled{background:rgba(11,8,18,.95);padding:.7rem clamp(1rem,4vw,3.5rem);backdrop-filter:blur(10px)}
+  .topbar .logo img.main{width:clamp(32px,4.2vw,42px)}
+  .topbar .logo img.text{height:clamp(24px,3.4vw,34px)}
+
+  .topbar-nav{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;justify-content:flex-end}
+  .nav-pill-btn{
+    display:inline-flex;align-items:center;gap:.4rem;
+    background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);
+    padding:.42rem .8rem;border-radius:999px;font-size:.8rem;font-weight:700;
+    backdrop-filter:blur(8px);transition:all .2s;
+  }
+  .nav-pill-btn:hover,.nav-pill-btn.active{
+    background:rgba(124,58,237,.35);border-color:rgba(251,146,60,.6);
+  }
+
+  .profile-trigger{
+    display:inline-flex;align-items:center;gap:.5rem;
+    background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);
+    padding:.28rem .7rem .28rem .3rem;border-radius:999px;font-size:.8rem;font-weight:700;
+    transition:all .2s;
+  }
+  .profile-trigger:hover{border-color:#fb923c;background:rgba(255,255,255,.16)}
+  .profile-avatar{
+    width:28px;height:28px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:.85rem;font-weight:800;color:#fff;
+    background:linear-gradient(135deg,#7c3aed,#ea580c);
+    background-size:cover;background-position:center;
+  }
+
+  /* Billboard */
+  .billboard{
+    position:relative;min-height:84vh;display:flex;align-items:flex-end;
+    overflow:hidden;isolation:isolate;background:#0b0812;
+  }
+  .billboard-backdrop{
+    position:absolute;inset:0;z-index:0;
+    background-size:cover;background-position:center 25%;
+    transform:scale(1.06);
+    animation:slowZoom 22s ease-in-out infinite alternate;
+    background-color:#0b0812;
+  }
+  @keyframes slowZoom{0%{transform:scale(1.03)}100%{transform:scale(1.13)}}
+  .billboard::before{
+    content:"";position:absolute;inset:0;z-index:1;
+    background:
+      linear-gradient(90deg,rgba(11,8,18,.95) 0%,rgba(11,8,18,.65) 40%,transparent 70%),
+      linear-gradient(0deg,#0b0812 2%,rgba(11,8,18,.62) 45%,transparent 75%);
+  }
+  .billboard-content{
+    position:relative;z-index:2;max-width:660px;
+    padding:7.5rem clamp(1.25rem,5vw,5rem) 4rem;
+    animation:fadeUp .9s var(--ease) both;
+  }
+  @keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+  .eyebrow{font-size:.78rem;font-weight:800;letter-spacing:.18em;color:#fb923c;
+    text-transform:uppercase;margin-bottom:.7rem}
+  .billboard-title{font-size:clamp(2.2rem,6vw,4.3rem);font-weight:900;line-height:1;
+    letter-spacing:-.02em;text-shadow:0 4px 24px rgba(0,0,0,.65)}
+  .billboard-meta{margin-top:.85rem;color:rgba(255,255,255,.82);
+    font-size:clamp(.85rem,1.6vw,1rem)}
+  .billboard-synopsis{margin-top:.95rem;max-width:550px;color:rgba(255,255,255,.9);
+    font-size:clamp(.92rem,1.7vw,1.02rem);line-height:1.55}
+  .billboard-actions{margin-top:1.5rem;display:flex;gap:.65rem;flex-wrap:wrap;align-items:center}
+
+  .btn-play,.btn-info,.btn-action{
+    display:inline-flex;align-items:center;gap:.45rem;border-radius:7px;
+    padding:.8rem 1.4rem;font-size:.95rem;font-weight:700;
+    transition:transform .15s var(--ease),background .2s,border-color .2s;
+  }
+  .btn-play{background:#fff;color:#111}
+  .btn-play:hover{background:#e6e6e6;transform:scale(1.03)}
+  .btn-info{background:rgba(90,82,115,.65);color:#fff;backdrop-filter:blur(6px)}
+  .btn-info:hover{background:rgba(124,58,237,.65);transform:scale(1.03)}
+  .btn-action{
+    background:rgba(255,255,255,.1);color:#fff;
+    border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(6px);
+  }
+  .btn-action:hover{background:rgba(255,255,255,.18)}
+  .btn-action.active{
+    background:rgba(226,38,44,.28);border-color:#fb923c;color:#fed7aa;
+  }
+
+  /* ============ 5-MOVIE GRID & WATCHLIST SECTION ============ */
+  .catalog-section{
+    position:relative;z-index:3;
+    margin-top:-2.5rem;
+    padding:0 clamp(1rem,4vw,3.5rem) 4rem;
+    max-width:1440px;margin-left:auto;margin-right:auto;
+  }
+  .section-head{
+    display:flex;align-items:center;justify-content:space-between;gap:1rem;
+    margin-bottom:1.25rem;flex-wrap:wrap;
+  }
+  .section-title{font-size:clamp(1.25rem,2.4vw,1.65rem);font-weight:800;letter-spacing:.01em}
+  .section-sub{font-size:.82rem;color:var(--muted)}
+
+  /* Strictly 5 movie cards */
+  .movies-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
+    gap:1.2rem;
+  }
+
+  .movie-card{
+    background:var(--card-bg);
+    border:1px solid rgba(255,255,255,.1);
+    border-radius:12px;
+    overflow:hidden;
+    display:flex;flex-direction:column;
+    box-shadow:0 10px 28px rgba(0,0,0,.55);
+    transition:transform .3s var(--ease),box-shadow .3s var(--ease),border-color .3s;
+  }
+  .movie-card:hover{
+    transform:translateY(-4px);
+    box-shadow:0 18px 38px rgba(0,0,0,.78);
+    border-color:rgba(251,146,60,.45);
+  }
+
+  .card-poster-wrap{
+    position:relative;aspect-ratio:16/9;overflow:hidden;background:#0e0919;cursor:pointer;
+  }
+  .card-poster-wrap img{
+    width:100%;height:100%;object-fit:cover;transition:transform .45s var(--ease);
+  }
+  .movie-card:hover .card-poster-wrap img{transform:scale(1.05)}
+  .card-poster-wrap::after{
+    content:"";position:absolute;inset:0;
+    background:linear-gradient(0deg,rgba(20,15,34,.92) 0%,transparent 55%);
+  }
+  .card-badge{
+    position:absolute;top:.6rem;left:.6rem;z-index:2;
+    font-size:.64rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+    background:linear-gradient(90deg,#e2262c,#ea580c);
+    padding:.24rem .55rem;border-radius:4px;
+  }
+
+  .card-body{padding:.9rem 1rem 1rem;display:flex;flex-direction:column;gap:.45rem;flex:1}
+  .card-title{font-size:1.05rem;font-weight:800;cursor:pointer}
+  .card-title:hover{color:#fdba74}
+  .card-meta{font-size:.76rem;color:var(--muted)}
+
+  .card-controls{
+    margin-top:auto;padding-top:.65rem;
+    display:flex;align-items:center;justify-content:space-between;gap:.45rem;
+    border-top:1px solid rgba(255,255,255,.07);
+  }
+  .card-btn{
+    display:inline-flex;align-items:center;gap:.32rem;
+    padding:.42rem .68rem;border-radius:6px;font-size:.76rem;font-weight:700;
+    background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);
+    transition:all .18s;
+  }
+  .card-btn:hover{background:rgba(255,255,255,.16)}
+  .card-btn.liked{background:rgba(226,38,44,.25);border-color:#f87171;color:#fecaca}
+  .card-btn.saved{background:rgba(124,58,237,.35);border-color:#c4b5fd;color:#ede9fe}
+  .card-btn.play-sm{background:#fff;color:#111;border-color:#fff}
+  .card-btn.play-sm:hover{background:#e5e7eb}
+
+  .watchlist-panel{
+    margin-top:2.5rem;
+    background:rgba(20,15,34,.75);
+    border:1px solid rgba(196,181,253,.18);
+    border-radius:14px;padding:1.35rem 1.5rem;
+  }
+  .watchlist-chips{display:flex;flex-wrap:wrap;gap:.65rem;margin-top:.85rem}
+  .watchlist-chip{
+    display:inline-flex;align-items:center;gap:.5rem;
+    background:rgba(124,58,237,.22);border:1px solid rgba(196,181,253,.35);
+    padding:.45rem .85rem;border-radius:999px;font-size:.84rem;font-weight:700;
+  }
+  .watchlist-chip button{font-size:.78rem;opacity:.75}
+  .watchlist-chip button:hover{opacity:1;color:#fca5a5}
+
+  /* ============ DRAWERS & MODALS (PROFILE, SETTINGS, DETAIL, PLAYER) ============ */
+  .drawer-backdrop{
+    position:fixed;inset:0;z-index:700;
+    background:rgba(5,3,12,.78);backdrop-filter:blur(8px);
+    display:none;justify-content:flex-end;
+  }
+  .drawer-backdrop.show{display:flex}
+  .drawer-panel{
+    width:100%;max-width:410px;height:100%;overflow-y:auto;
+    background:linear-gradient(170deg,#19102e,#0d0818);
+    border-left:1px solid rgba(255,255,255,.14);
+    padding:1.75rem 1.5rem;display:flex;flex-direction:column;gap:1.25rem;
+  }
+  .drawer-head{display:flex;align-items:center;justify-content:space-between}
+  .drawer-head h2{font-size:1.35rem;font-weight:800}
+
+  .profile-card{
+    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);
+    border-radius:12px;padding:1.1rem;display:flex;align-items:center;gap:.9rem;
+  }
+  .profile-avatar-lg{
+    width:56px;height:56px;border-radius:50%;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+    font-size:1.3rem;font-weight:900;
+    background:linear-gradient(135deg,#7c3aed,#ea580c);
+    background-size:cover;background-position:center;
+  }
+  .uid-code{
+    margin-top:.3rem;display:inline-block;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:.74rem;color:#fdba74;
+    background:rgba(251,146,60,.12);padding:.2rem .5rem;border-radius:5px;
+    word-break:break-all;
+  }
+
+  .avatar-picker{display:flex;flex-wrap:wrap;gap:.55rem;margin-top:.5rem}
+  .avatar-option{
+    width:42px;height:42px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:.95rem;
+    border:2px solid transparent;transition:transform .15s,border-color .15s;
+  }
+  .avatar-option:hover{transform:scale(1.08)}
+  .avatar-option.selected{border-color:#fb923c}
+
+  .setting-row{
+    display:flex;align-items:center;justify-content:space-between;gap:1rem;
+    padding:.85rem 0;border-bottom:1px solid rgba(255,255,255,.08);
+  }
+  .setting-label{font-size:.9rem;font-weight:700}
+  .setting-desc{font-size:.76rem;color:var(--muted);margin-top:.15rem}
+
+  /* Detail Page */
+  .detail-page{
+    position:fixed;inset:0;z-index:600;overflow-y:auto;
+    background:#080510;opacity:0;visibility:hidden;
+    transition:opacity .35s,visibility .35s;
+  }
+  .detail-page.show{opacity:1;visibility:visible}
+  .detail-hero{
+    position:relative;min-height:66vh;display:flex;align-items:flex-end;overflow:hidden;
+  }
+  .detail-hero .db{position:absolute;inset:0;background-size:cover;background-position:center 25%}
+  .detail-hero::before{
+    content:"";position:absolute;inset:0;
+    background:
+      linear-gradient(90deg,rgba(8,5,16,.9) 0%,rgba(8,5,16,.4) 60%,transparent 80%),
+      linear-gradient(0deg,#080510 2%,rgba(8,5,16,.6) 50%,transparent 80%);
+  }
+  .detail-hero .dh-content{position:relative;z-index:2;max-width:720px;padding:7rem clamp(1.25rem,5vw,5rem) 2.5rem}
+  .detail-hero .dh-title{font-size:clamp(2rem,5.5vw,3.6rem);font-weight:900;line-height:1.02}
+  .detail-hero .dh-meta{margin-top:.75rem;color:rgba(255,255,255,.82)}
+  .detail-hero .dh-actions{margin-top:1.4rem;display:flex;gap:.65rem;flex-wrap:wrap}
+
+  .detail-body{
+    padding:0 clamp(1.25rem,5vw,5rem) 4rem;max-width:1160px;margin:0 auto;
+    display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:2.2rem;
+  }
+  .detail-body h3{font-size:.88rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:.75rem}
+  .detail-body .synopsis{font-size:1rem;line-height:1.65;color:rgba(255,255,255,.9);margin-bottom:1.8rem}
+  .info-list{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1.8rem}
+  .info-pill{font-size:.82rem;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);padding:.38rem .75rem;border-radius:999px}
+  .cast-row{display:flex;gap:1rem;overflow-x:auto;padding-bottom:.5rem}
+  .cast-card{flex:0 0 100px;text-align:center}
+  .cast-card .avatar{width:76px;height:76px;border-radius:50%;margin:0 auto .5rem;background:linear-gradient(135deg,#4c1d95,#c2410c);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.1rem}
+  .cast-card .cname{font-size:.76rem;font-weight:700}
+  .cast-card .crole{font-size:.68rem;color:var(--muted)}
+
+  .detail-back-btn{
+    position:fixed;top:1rem;left:1rem;z-index:5;
+    display:inline-flex;align-items:center;gap:.4rem;
+    background:rgba(20,16,32,.88);border:1px solid rgba(255,255,255,.25);
+    border-radius:999px;padding:.5rem 1rem;font-size:.85rem;font-weight:700;
+  }
+
+  /* Mux Player Modal */
+  .mux-modal{
+    position:fixed;inset:0;z-index:900;background:#000;
+    display:none;align-items:center;justify-content:center;
+  }
+  .mux-modal.show{display:flex}
+  .mux-modal iframe{width:100%;height:100%;border:0}
+  .mux-close{
+    position:absolute;top:1rem;right:1rem;z-index:6;width:44px;height:44px;border-radius:50%;
+    background:rgba(20,20,22,.88);border:1px solid rgba(255,255,255,.25);
+    display:flex;align-items:center;justify-content:center;
+  }
+
+  .toast{
+    position:fixed;bottom:1.4rem;left:50%;transform:translateX(-50%) translateY(20px);
+    z-index:950;background:rgba(24,16,44,.95);border:1px solid rgba(251,146,60,.5);
+    color:#fff;padding:.65rem 1.2rem;border-radius:999px;font-size:.85rem;font-weight:700;
+    opacity:0;pointer-events:none;transition:all .25s var(--ease);
+    box-shadow:0 12px 28px rgba(0,0,0,.7);
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  @media (max-width:860px){
+    .detail-body{grid-template-columns:1fr}
+    .billboard-content{padding:6.5rem 1.25rem 3rem}
+    .catalog-section{margin-top:-1.5rem}
   }
 </style>
 </head>
 <body>
 
-<!-- ================= INTRO OVERLAY ================= -->
-<div class="intro" id="intro" aria-hidden="true">
+<!-- ============ GET STARTED (FULL SIGN-IN REQUIRED) ============ -->
+<div class="getstarted" id="getstarted">
+  <header class="gs-header">
+    <div class="logo">
+      <img class="main" src="https://files.catbox.moe/4u5ypw.png" alt="KCNXFLIX">
+      <img class="text" src="https://files.catbox.moe/u2loov.png" alt="KCNXFLIX">
+    </div>
+    <div class="header-right">
+      <div class="lang-wrap">
+        <select class="lang-select" data-lang-select aria-label="Language">
+          <option value="en" selected>English</option>
+          <option value="hi">हिन्दी</option>
+        </select>
+      </div>
+    </div>
+  </header>
 
-  <video
-    id="introVideo"
-    playsinline
-    muted
-    preload="auto"
-    src="https://files.catbox.moe/hqjf7f.mp4"
-  ></video>
+  <section class="gs-hero">
+    <div class="bg"></div>
+    <div class="evening-sun"></div>
+    <div class="content">
+      <img src="https://files.catbox.moe/4u5ypw.png" alt="KCNXFLIX">
+      <h1 data-i18n="heroHeadline">Unlimited movies, shows, and more</h1>
+      <p class="gs-sub" data-i18n="heroSub">Sign in with your Google or verified Email account to unlock your KCNXFLIX profile, likes, and watchlist.</p>
+      <button class="btn-primary" id="openAuthBtn" type="button">
+        <span data-i18n="signInCta">Sign In to KCNXFLIX</span>
+        <svg viewBox="0 0 24 24" fill="none"><path fill="currentColor" fill-rule="evenodd" d="m15.586 12-7.293 7.293 1.414 1.414 8-8a1 1 0 0 0 0-1.414l-8-8-1.414 1.414z" clip-rule="evenodd"/></svg>
+      </button>
+    </div>
+  </section>
+</div>
 
-  <div class="embed-stage" id="embedStage">
+<!-- ============ FIREBASE FULL SIGN-IN MODAL (NO ANONYMOUS LOGIN) ============ -->
+<div class="auth-modal" id="authModal" aria-hidden="true">
+  <div class="auth-box">
+    <button class="auth-close" id="authCloseBtn" type="button" aria-label="Close">✕</button>
+    <h2 data-i18n="authTitle">Sign In to KCNXFLIX</h2>
+    <p class="sub" data-i18n="authSub">Full account sign-in via Google or Firebase Email verification.</p>
 
-    <!-- Floating Home button (resets to main page) -->
-    <button type="button" class="home-btn" id="homeBtn" aria-label="Home" title="Home">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-           stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-        <polyline points="9 22 9 12 15 12 15 22"/>
-      </svg>
+    <button class="btn-google" id="googleSignInBtn" type="button">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      <span>Continue with Google</span>
     </button>
 
-    <!-- Full-page iframe allowing top-level navigation and popups -->
-    <div class="embed-frame-wrap">
-      <iframe
-        id="siteFrame"
-        title="Movies"
-        src=""
-        sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-presentation allow-top-navigation allow-popups"
-        referrerpolicy="no-referrer-when-downgrade"
-        allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-        allowfullscreen
-      ></iframe>
+    <div class="auth-divider">or Firebase Email Auth</div>
+
+    <div class="auth-tabs">
+      <button type="button" class="auth-tab active" id="tabEmailLink">Email Link</button>
+      <button type="button" class="auth-tab" id="tabEmailPass">Email & Password</button>
+    </div>
+
+    <!-- Mode A: Firebase Passwordless Email Sign-In Link -->
+    <form id="emailLinkForm">
+      <input type="email" class="auth-input" id="linkEmailInput" placeholder="Enter your email address" required autocomplete="email">
+      <button type="submit" class="btn-submit">Send Firebase Sign-In Link</button>
+    </form>
+
+    <!-- Mode B: Firebase Email + Password with Real Email Verification -->
+    <form id="emailPassForm" style="display:none">
+      <input type="email" class="auth-input" id="passEmailInput" placeholder="Email address" required autocomplete="email">
+      <input type="password" class="auth-input" id="passPasswordInput" placeholder="Password (min 6 chars)" required minlength="6" autocomplete="current-password">
+      <div style="display:flex;gap:.5rem">
+        <button type="submit" class="btn-submit" id="emailLoginBtn">Sign In</button>
+        <button type="button" class="btn-submit" id="emailRegisterBtn" style="background:linear-gradient(135deg,#e2262c,#ea580c)">Create + Verify Email</button>
+      </div>
+    </form>
+
+    <div class="auth-status" id="authStatus"></div>
+  </div>
+</div>
+
+<!-- ============ INTRO VIDEO ============ -->
+<div class="intro" id="intro" aria-hidden="true">
+  <video id="introVideo" playsinline muted preload="auto" src="https://files.catbox.moe/hqjf7f.mp4"></video>
+</div>
+
+<!-- ============ MAIN APP ============ -->
+<div class="app" id="app">
+  <header class="topbar" id="topbar">
+    <div class="logo">
+      <img class="main" src="https://files.catbox.moe/4u5ypw.png" alt="KCNXFLIX">
+      <img class="text" src="https://files.catbox.moe/u2loov.png" alt="KCNXFLIX">
+    </div>
+
+    <div class="topbar-nav">
+      <button class="nav-pill-btn" id="openWatchlistNav" type="button">
+        <span>Watchlist</span>
+        <span id="watchlistCountBadge">0</span>
+      </button>
+      <button class="nav-pill-btn" id="openSettingsBtn" type="button">
+        <span data-i18n="settings">Settings</span>
+      </button>
+      <button class="profile-trigger" id="openProfileBtn" type="button">
+        <span class="profile-avatar" id="topAvatar">K</span>
+        <span id="topUserName">Member</span>
+      </button>
+    </div>
+  </header>
+
+  <section class="billboard">
+    <div class="billboard-backdrop" id="billboardBackdrop"></div>
+    <div class="billboard-content">
+      <div class="eyebrow" data-i18n="featured">Featured</div>
+      <h1 class="billboard-title" id="billboardTitle"></h1>
+      <div class="billboard-meta" id="billboardMeta"></div>
+      <p class="billboard-synopsis" id="billboardSynopsis"></p>
+      <div class="billboard-actions">
+        <button class="btn-play" id="billboardPlay" type="button">▶ <span data-i18n="play">Play</span></button>
+        <button class="btn-info" id="billboardInfo" type="button">ⓘ <span data-i18n="moreInfo">More Info</span></button>
+        <button class="btn-action" id="billboardLike" type="button">♥ <span data-i18n="like">Like</span></button>
+        <button class="btn-action" id="billboardWatchlist" type="button">+ <span data-i18n="watchlist">Watchlist</span></button>
+        <button class="btn-action" id="billboardShare" type="button">⤴ <span data-i18n="share">Share</span></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 MOVIE CARDS ONLY (NO INTERCHANGE OF COVERS) -->
+  <section class="catalog-section" id="catalogSection">
+    <div class="section-head">
+      <div>
+        <h2 class="section-title" data-i18n="moviesHeading">KCNXFLIX 5 Featured Titles</h2>
+        <p class="section-sub" data-i18n="moviesSub">Each title uses its dedicated cover art with like, watchlist, and share actions.</p>
+      </div>
+    </div>
+
+    <div class="movies-grid" id="moviesGrid"></div>
+
+    <div class="watchlist-panel" id="watchlistPanel">
+      <div class="section-head" style="margin-bottom:0">
+        <div>
+          <h3 style="font-size:1.1rem;font-weight:800" data-i18n="watchlist">My Watchlist</h3>
+          <p class="section-sub" id="watchlistEmptyText">Your saved movies appear here.</p>
+        </div>
+      </div>
+      <div class="watchlist-chips" id="watchlistChips"></div>
+    </div>
+  </section>
+
+  <!-- MOVIE DETAIL OVERLAY -->
+  <div class="detail-page" id="detailPage" aria-hidden="true">
+    <button class="detail-back-btn" id="detailBackBtn" type="button">← <span data-i18n="back">Back</span></button>
+    <div class="detail-hero">
+      <div class="db" id="detailBackdrop"></div>
+      <div class="dh-content">
+        <h1 class="dh-title" id="detailTitle"></h1>
+        <div class="dh-meta" id="detailMeta"></div>
+        <div class="dh-actions">
+          <button class="btn-play" id="detailPlay" type="button">▶ <span data-i18n="play">Play</span></button>
+          <button class="btn-action" id="detailLike" type="button">♥ <span data-i18n="like">Like</span></button>
+          <button class="btn-action" id="detailWatchlist" type="button">+ <span data-i18n="watchlist">Watchlist</span></button>
+          <button class="btn-action" id="detailShare" type="button">⤴ <span data-i18n="share">Share</span></button>
+        </div>
+      </div>
+    </div>
+    <div class="detail-body">
+      <div>
+        <h3 data-i18n="synopsisLabel">Synopsis</h3>
+        <p class="synopsis" id="detailSynopsis"></p>
+        <h3 data-i18n="directorLabel">Director</h3>
+        <div class="info-list" id="detailDirector"></div>
+        <h3 data-i18n="castLabel">Cast</h3>
+        <div class="cast-row" id="detailCast"></div>
+      </div>
+      <aside>
+        <h3 data-i18n="detailsLabel">Details</h3>
+        <div class="info-list" id="detailDetails"></div>
+      </aside>
     </div>
   </div>
 </div>
 
-<!-- ================= HEADER ================= -->
-<header class="header">
-  <div class="logo">
-    <img class="main-logo" src="https://files.catbox.moe/4u5ypw.png" alt="KCNXFLIX Icon">
-    <img class="text-logo" src="https://files.catbox.moe/u2loov.png" alt="KCNXFLIX Logo">
-    <span class="sr-only">KCNXFLIX</span>
-  </div>
-  <div class="lang-wrap">
-    <select class="lang-select" id="langSelect" aria-label="Select Language">
-      <option value="en" selected>English</option>
-      <option value="hi">हिन्दी</option>
-      <option value="mr">मराठी</option>
-      <option value="ta">தமிழ்</option>
-      <option value="te">తెలుగు</option>
-      <option value="bn">বাংলা</option>
-      <option value="gu">ગુજરાતી</option>
-      <option value="kn">ಕನ್ನಡ</option>
-      <option value="ml">മലയാളം</option>
-      <option value="pa">ਪੰਜਾਬੀ</option>
-    </select>
-  </div>
-</header>
+<!-- ============ PROFILE DRAWER (USER ID + PROFILE ICON SETUP) ============ -->
+<div class="drawer-backdrop" id="profileDrawer" aria-hidden="true">
+  <div class="drawer-panel">
+    <div class="drawer-head">
+      <h2>Profile & User ID</h2>
+      <button class="auth-close" style="position:static" id="closeProfileDrawer" type="button">✕</button>
+    </div>
 
-<!-- ================= HERO ================= -->
-<section class="hero">
-  <div class="hero-bg"></div>
+    <div class="profile-card">
+      <div class="profile-avatar-lg" id="drawerAvatar">K</div>
+      <div>
+        <div style="font-weight:800;font-size:1.05rem" id="drawerDisplayName">Member</div>
+        <div style="font-size:.8rem;color:var(--muted)" id="drawerEmail">user@kcnxflix.app</div>
+        <div class="uid-code" id="drawerUid">UID: loading...</div>
+      </div>
+    </div>
 
-  <div class="hero-content">
-    <img class="hero-icon" src="https://files.catbox.moe/4u5ypw.png" alt="KCNXFLIX">
-    <h1 id="heroHeadline">Free Movies Forever<sub>DESIGNED BY KCNX WEBOS <h6>by Developer Bhargav</h6></sub></h1>
-    <button class="btn-primary" id="getStartedBtn" type="button">
-      <span id="btnLabel">[ Get Started as Anonymous ]</span>
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path fill="currentColor" fill-rule="evenodd"
-          d="m15.586 12-7.293 7.293 1.414 1.414 8-8a1 1 0 0 0 0-1.414l-8-8-1.414 1.414z"
-          clip-rule="evenodd"/>
-      </svg>
+    <div>
+      <label style="display:block;font-size:.82rem;font-weight:700;margin-bottom:.4rem">Display Name</label>
+      <div style="display:flex;gap:.5rem">
+        <input type="text" class="auth-input" id="profileNameInput" placeholder="Enter display name" style="margin-bottom:0">
+        <button type="button" class="btn-submit" id="saveProfileBtn" style="width:auto;padding:.65rem 1rem">Save</button>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-size:.82rem;font-weight:700">Choose Profile Icon Preset</div>
+      <div class="avatar-picker" id="avatarPresetPicker"></div>
+    </div>
+
+    <div>
+      <label style="display:block;font-size:.82rem;font-weight:700;margin-bottom:.4rem">Custom Profile Icon Image URL</label>
+      <div style="display:flex;gap:.5rem">
+        <input type="url" class="auth-input" id="customAvatarUrlInput" placeholder="https://.../avatar.png" style="margin-bottom:0">
+        <button type="button" class="btn-submit" id="applyAvatarUrlBtn" style="width:auto;padding:.65rem 1rem">Set</button>
+      </div>
+    </div>
+
+    <button type="button" class="btn-submit" id="drawerSignOutBtn" style="background:linear-gradient(135deg,#991b1b,#dc2626);margin-top:auto">
+      Sign Out
     </button>
   </div>
+</div>
 
-  <div class="hero-curve"></div>
-</section>
+<!-- ============ SETTINGS DRAWER ============ -->
+<div class="drawer-backdrop" id="settingsDrawer" aria-hidden="true">
+  <div class="drawer-panel">
+    <div class="drawer-head">
+      <h2 data-i18n="settings">Settings</h2>
+      <button class="auth-close" style="position:static" id="closeSettingsDrawer" type="button">✕</button>
+    </div>
 
-<!-- ================= FOOTER ================= -->
-<footer class="footer">
-  <p class="q">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
-    </svg>
-    <span data-i18n="footerCall">Questions? Call 000-800-919-1694</span>
-  </p>
-  <div class="footer-grid">
-    <a href="#">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-      <span data-i18n="faq">FAQ</span>
-    </a>
-    <a href="#">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-      <span data-i18n="helpCentre">Help Centre</span>
-    </a>
-    <a href="#">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      <span data-i18n="account">Account</span>
-    </a>
-    <a href="#">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-      <span data-i18n="mediaCentre">Media Centre</span>
-    </a>
-    <a href="#">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
-      <span data-i18n="investorRelations">Investor Relations</span>
-    </a>
-    <a href="#">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-      <span data-i18n="jobs">Jobs</span>
-    </a>
-    <a href="#">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
-      <span data-i18n="waysToWatch">Ways to Watch</span>
-    </a>
-    <a href="#">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      <span data-i18n="termsOfUse">Terms of Use</span>
-    </a>
-    <a href="#">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-      <span data-i18n="privacy">Privacy</span>
-    </a>
-    <a href="#">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-      <span data-i18n="cookiePreferences">Cookie Preferences</span>
-    </a>
-    <a href="#">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
-      <span data-i18n="corporateInfo">Corporate Information</span>
-    </a>
-    <a href="#">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      <span data-i18n="contactUs">Contact Us</span>
-    </a>
-    <a href="#">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-      <span data-i18n="speedTest">Speed Test</span>
-    </a>
-    <a href="#">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-      <span data-i18n="legalNotices">Legal Notices</span>
-    </a>
-    <a href="#">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-      <span data-i18n="onlyOnKflix">Only on KCNXFLIX</span>
-    </a>
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">Language / भाषा</div>
+        <div class="setting-desc">Switch UI between English and हिन्दी</div>
+      </div>
+      <div class="lang-wrap">
+        <select class="lang-select" data-lang-select aria-label="Language">
+          <option value="en" selected>English</option>
+          <option value="hi">हिन्दी</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">Autoplay Intro Video</div>
+        <div class="setting-desc">Play KCNXFLIX intro right after sign-in</div>
+      </div>
+      <input type="checkbox" id="prefIntroVideo" checked style="width:18px;height:18px;accent-color:#ea580c;cursor:pointer">
+    </div>
+
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">Show Liked Badges</div>
+        <div class="setting-desc">Highlight liked status on movie cards</div>
+      </div>
+      <input type="checkbox" id="prefShowLikes" checked style="width:18px;height:18px;accent-color:#ea580c;cursor:pointer">
+    </div>
+
+    <div class="setting-row" style="border-bottom:0">
+      <div>
+        <div class="setting-label">Reset Local Preferences</div>
+        <div class="setting-desc">Clear saved likes, watchlist & icon settings</div>
+      </div>
+      <button type="button" class="card-btn" id="resetPrefsBtn">Reset</button>
+    </div>
   </div>
-  <p class="brand-note">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
-    </svg>
-    <span data-i18n="brandNote">KCNXFLIX · KCNX WebOS 2026</span>
-  </p>
-</footer>
+</div>
 
-<audio id="bgMusic" preload="auto" src="https://files.catbox.moe/pq4hly.mp3"></audio>
+<!-- ============ MUX PLAYER MODAL ============ -->
+<div class="mux-modal" id="muxModal" aria-hidden="true">
+  <button class="mux-close" id="muxClose" aria-label="Close player" type="button">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
+  <iframe
+    id="muxFrame"
+    src=""
+    allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen;"
+    allowfullscreen
+    title="Movie player"></iframe>
+</div>
+
+<div class="toast" id="toast"></div>
 
 <script>
-(function () {
+(function(){
   "use strict";
 
-  /* ============================================================
-     CONFIG
-     ============================================================ */
-  var EMBED_URL     = "https://www.moviesbazar.media/";
-  var VIDEO_TIMEOUT = 30000;
-
-  /* ============================================================
-     TRANSLATIONS
-     ============================================================ */
   var I18N = {
-    en:{heroHeadline:"Unlimited movies, shows, and more",btnLabel:"[ Get Started as Anonymous ]",footerCall:"Questions? Call 000-800-919-1694",faq:"FAQ",helpCentre:"Help Centre",account:"Account",mediaCentre:"Media Centre",investorRelations:"Investor Relations",jobs:"Jobs",waysToWatch:"Ways to Watch",termsOfUse:"Terms of Use",privacy:"Privacy",cookiePreferences:"Cookie Preferences",corporateInfo:"Corporate Information",contactUs:"Contact Us",speedTest:"Speed Test",legalNotices:"Legal Notices",onlyOnKflix:"Only on KCNXFLIX",brandNote:"KCNXFLIX · KCNX WebOS 2026"},
-    hi:{heroHeadline:"असीमित फिल्में, शोज़ और बहुत कुछ",btnLabel:"[ अनाम के रूप में शुरू करें ]",footerCall:"सवाल हैं? कॉल करें 000-800-919-1694",faq:"अक्सर पूछे जाने वाले प्रश्न",helpCentre:"सहायता केंद्र",account:"खाता",mediaCentre:"मीडिया केंद्र",investorRelations:"निवेशक संबंध",jobs:"नौकरियाँ",waysToWatch:"देखने के तरीके",termsOfUse:"उपयोग की शर्तें",privacy:"गोपनीयता",cookiePreferences:"कुकी प्राथमिकताएँ",corporateInfo:"कॉर्पोरेट जानकारी",contactUs:"संपर्क करें",speedTest:"स्पीड टेस्ट",legalNotices:"कानूनी सूचनाएँ",onlyOnKflix:"केवल KCNXFLIX पर",brandNote:"KCNXFLIX · KCNX WebOS 2026"},
-    mr:{heroHeadline:"अमर्यादित चित्रपट, मालिका आणि बरेच काही",btnLabel:"[ अनाम म्हणून सुरू करा ]",footerCall:"प्रश्न आहेत? कॉल करा 000-800-919-1694",faq:"वारंवार विचारले जाणारे प्रश्न",helpCentre:"मदत केंद्र",account:"खाते",mediaCentre:"मीडिया केंद्र",investorRelations:"गुंतवणूकदार संबंध",jobs:"नोकऱ्या",waysToWatch:"पाहण्याचे मार्ग",termsOfUse:"वापरण्याच्या अटी",privacy:"गोपनीयता",cookiePreferences:"कुकी प्राधान्ये",corporateInfo:"कॉर्पोरेट माहिती",contactUs:"आमच्याशी संपर्क साधा",speedTest:"स्पीड टेस्ट",legalNotices:"कायदेशीर सूचना",onlyOnKflix:"फक्त KCNXFLIX वर",brandNote:"KCNXFLIX · KCNX WebOS 2026"},
-    ta:{heroHeadline:"வரம்பற்ற திரைப்படங்கள், நிகழ்ச்சிகள் மற்றும் பல",btnLabel:"[ அநாமதேயமாக தொடங்குங்கள் ]",footerCall:"கேள்விகளா? அழைக்கவும் 000-800-919-1694",faq:"அடிக்கடி கேட்கப்படும் கேள்விகள்",helpCentre:"உதவி மையம்",account:"கணக்கு",mediaCentre:"ஊடக மையம்",investorRelations:"முதலீட்டாளர் உறவுகள்",jobs:"வேலைகள்",waysToWatch:"பார்க்கும் வழிகள்",termsOfUse:"பயன்பாட்டு விதிமுறைகள்",privacy:"தனியுரிமை",cookiePreferences:"குக்கீ விருப்பத்தேர்வுகள்",corporateInfo:"நிறுவனத் தகவல்",contactUs:"எங்களைத் தொடர்பு கொள்ளுங்கள்",speedTest:"வேகச் சோதனை",legalNotices:"சட்ட அறிவிப்புகள்",onlyOnKflix:"KCNXFLIX இல் மட்டும்",brandNote:"KCNXFLIX · KCNX WebOS 2026"},
-    te:{heroHeadline:"అపరిమిత సినిమాలు, షోలు మరియు మరిన్ని",btnLabel:"[ అనామకంగా ప్రారంభించండి ]",footerCall:"ప్రశ్నలు ఉన్నాయా? కాల్ చేయండి 000-800-919-1694",faq:"తరచుగా అడిగే ప్రశ్నలు",helpCentre:"సహాయ కేంద్రం",account:"ఖాతా",mediaCentre:"మీడియా కేంద్రం",investorRelations:"పెట్టుబడిదారుల సంబంధాలు",jobs:"ఉద్యోగాలు",waysToWatch:"వీక్షించే మార్గాలు",termsOfUse:"ఉపయోగ నిబంధనలు",privacy:"గోప్యత",cookiePreferences:"కుకీ ప్రాధాన్యతలు",corporateInfo:"కార్పొరేట్ సమాచారం",contactUs:"మమ్మల్ని సంప్రదించండి",speedTest:"స్పీడ్ టెస్ట్",legalNotices:"చట్టపరమైన నోటీసులు",onlyOnKflix:"KCNXFLIX లో మాత్రమే",brandNote:"KCNXFLIX · KCNX WebOS 2026"},
-    bn:{heroHeadline:"আনলিমিটেড সিনেমা, শো এবং আরও অনেক কিছু",btnLabel:"[ বেনামী হিসেবে শুরু করুন ]",footerCall:"প্রশ্ন আছে? কল করুন 000-800-919-1694",faq:"সচরাচর জিজ্ঞাসিত প্রশ্ন",helpCentre:"সহায়তা কেন্দ্র",account:"অ্যাকাউন্ট",mediaCentre:"মিডিয়া সেন্টার",investorRelations:"বিনিয়োগকারী সম্পর্ক",jobs:"চাকরি",waysToWatch:"দেখার উপায়",termsOfUse:"ব্যবহারের শর্তাবলী",privacy:"গোপনীয়তা",cookiePreferences:"কুকি পছন্দ",corporateInfo:"কর্পোরেট তথ্য",contactUs:"আমাদের সাথে যোগাযোগ করুন",speedTest:"স্পিড টেস্ট",legalNotices:"আইনি নোটিশ",onlyOnKflix:"শুধুমাত্র KCNXFLIX-এ",brandNote:"KCNXFLIX · KCNX WebOS 2026"},
-    gu:{heroHeadline:"અમર્યાદિત ફિલ્મો, શો અને વધુ",btnLabel:"[ અનામી તરીકે શરૂ કરો ]",footerCall:"પ્રશ્નો છે? કૉલ કરો 000-800-919-1694",faq:"વારંવાર પૂછાતા પ્રશ્નો",helpCentre:"સહાય કેન્દ્ર",account:"ખાતું",mediaCentre:"મીડિયા કેન્દ્ર",investorRelations:"રોકાણકાર સંબંધો",jobs:"નોકરીઓ",waysToWatch:"જોવાની રીતો",termsOfUse:"ઉપયોગની શરતો",privacy:"ગોપનીયતા",cookiePreferences:"કૂકી પસંદગીઓ",corporateInfo:"કોર્પોરેટ માહિતી",contactUs:"અમારો સંપર્ક કરો",speedTest:"સ્પીડ ટેસ્ટ",legalNotices:"કાનૂની સૂચનાઓ",onlyOnKflix:"ફક્ત KCNXFLIX પર",brandNote:"KCNXFLIX · KCNX WebOS 2026"},
-    kn:{heroHeadline:"ಅಪರಿಮಿತ ಚಲನಚಿತ್ರಗಳು, ಕಾರ್ಯಕ್ರಮಗಳು ಮತ್ತು ಇನ್ನಷ್ಟು",btnLabel:"[ ಅನಾಮಧೇಯರಾಗಿ ಪ್ರಾರಂಭಿಸಿ ]",footerCall:"ಪ್ರಶ್ನೆಗಳಿವೆಯೇ? ಕರೆ ಮಾಡಿ 000-800-919-1694",faq:"ಪದೇ ಪದೇ ಕೇಳಲಾಗುವ ಪ್ರಶ್ನೆಗಳು",helpCentre:"ಸಹಾಯ ಕೇಂದ್ರ",account:"ಖಾತೆ",mediaCentre:"ಮೀಡಿಯಾ ಕೇಂದ್ರ",investorRelations:"ಹೂಡಿಕೆದಾರರ ಸಂಬಂಧಗಳು",jobs:"ಉದ್ಯೋಗಗಳು",waysToWatch:"ವೀಕ್ಷಿಸುವ ವಿಧಾನಗಳು",termsOfUse:"ಬಳಕೆಯ ನಿಯಮಗಳು",privacy:"ಗೋಪ್ಯತೆ",cookiePreferences:"ಕುಕಿ ಆದ್ಯತೆಗಳು",corporateInfo:"ಕಾರ್ಪೊರೇಟ್ ಮಾಹಿತಿ",contactUs:"ನಮ್ಮನ್ನು ಸಂಪರ್ಕಿಸಿ",speedTest:"ವೇಗ ಪರೀಕ್ಷೆ",legalNotices:"ಕಾನೂನು ಸೂಚನೆಗಳು",onlyOnKflix:"KCNXFLIX ನಲ್ಲಿ ಮಾತ್ರ",brandNote:"KCNXFLIX · KCNX WebOS 2026"},
-    ml:{heroHeadline:"പരിധിയില്ലാത്ത സിനിമകൾ, ഷോകൾ, ഒപ്പം ഒരുപാട് കൂടി",btnLabel:"[ അനാമധേയമായി ആരംഭിക്കുക ]",footerCall:"ചോദ്യങ്ങളുണ്ടോ? വിളിക്കുക 000-800-919-1694",faq:"പതിവായി ചോദിക്കുന്ന ചോദ്യങ്ങൾ",helpCentre:"സഹായ കേന്ദ്രം",account:"അക്കൗണ്ട്",mediaCentre:"മീഡിയ സെന്റർ",investorRelations:"നിക്ഷേപക ബന്ധങ്ങൾ",jobs:"ജോലികൾ",waysToWatch:"കാണാനുള്ള വഴികൾ",termsOfUse:"ഉപയോഗ നിബന്ധനകൾ",privacy:"സ്വകാര്യത",cookiePreferences:"കുക്കി മുൻഗണനകൾ",corporateInfo:"കോർപ്പറേറ്റ് വിവരങ്ങൾ",contactUs:"ഞങ്ങളെ ബന്ധപ്പെടുക",speedTest:"സ്പീഡ് ടെസ്റ്റ്",legalNotices:"നിയമപരമായ അറിയിപ്പുകൾ",onlyOnKflix:"KCNXFLIX-ൽ മാത്രം",brandNote:"KCNXFLIX · KCNX WebOS 2026"},
-    pa:{heroHeadline:"ਬੇਅੰਤ ਫ਼ਿਲਮਾਂ, ਸ਼ੋਅ ਅਤੇ ਹੋਰ ਬਹੁਤ ਕੁਝ",btnLabel:"[ ਗੁਮਨਾਮ ਵਜੋਂ ਸ਼ੁਰੂ ਕਰੋ ]",footerCall:"ਸਵਾਲ ਹਨ? ਕਾਲ ਕਰੋ 000-800-919-1694",faq:"ਅਕਸਰ ਪੁੱਛੇ ਜਾਂਦੇ ਸਵਾਲ",helpCentre:"ਸਹਾਇਤਾ ਕੇਂਦਰ",account:"ਖਾਤਾ",mediaCentre:"ਮੀਡੀਆ ਕੇਂਦਰ",investorRelations:"ਨਿਵੇਸ਼ਕ ਸੰਬੰਧ",jobs:"ਨੌਕਰੀਆਂ",waysToWatch:"ਦੇਖਣ ਦੇ ਤਰੀਕੇ",termsOfUse:"ਵਰਤੋਂ ਦੀਆਂ ਸ਼ਰਤਾਂ",privacy:"ਗੋਪਨੀਯਤਾ",cookiePreferences:"ਕੂਕੀ ਤਰਜੀਹਾਂ",corporateInfo:"ਕਾਰਪੋਰੇਟ ਜਾਣਕਾਰੀ",contactUs:"ਸਾਡੇ ਨਾਲ ਸੰਪਰਕ ਕਰੋ",speedTest:"ਸਪੀਡ ਟెస్ట్",legalNotices:"ਕਾਨੂੰਨੀ ਨੋਟਿਸ",onlyOnKflix:"ਸਿਰਫ਼ KCNXFLIX 'ਤੇ",brandNote:"KCNXFLIX · KCNX WebOS 2026"}
+    en: {
+      heroHeadline: "Unlimited movies, shows, and more",
+      heroSub: "Sign in with your Google or verified Email account to unlock your KCNXFLIX profile, likes, and watchlist.",
+      signInCta: "Sign In to KCNXFLIX",
+      authTitle: "Sign In to KCNXFLIX",
+      authSub: "Full account sign-in via Google or Firebase Email verification.",
+      featured: "Featured",
+      play: "Play",
+      moreInfo: "More Info",
+      like: "Like",
+      watchlist: "Watchlist",
+      share: "Share",
+      back: "Back",
+      settings: "Settings",
+      moviesHeading: "KCNXFLIX 5 Featured Titles",
+      moviesSub: "Each title uses its dedicated cover art with like, watchlist, and share actions.",
+      synopsisLabel: "Synopsis",
+      directorLabel: "Director",
+      castLabel: "Cast",
+      detailsLabel: "Details"
+    },
+    hi: {
+      heroHeadline: "असीमित फिल्में, शोज़ और बहुत कुछ",
+      heroSub: "अपनी प्रोफ़ाइल, लाइक्स और वॉचलिस्ट पाने के लिए Google या सत्यापित ईमेल से साइन इन करें।",
+      signInCta: "KCNXFLIX में साइन इन करें",
+      authTitle: "KCNXFLIX में साइन इन करें",
+      authSub: "Google या Firebase ईमेल सत्यापन के माध्यम से पूर्ण साइन-इन।",
+      featured: "विशेष प्रस्तुति",
+      play: "चलाएँ",
+      moreInfo: "अधिक जानकारी",
+      like: "लाइक",
+      watchlist: "वॉचलिस्ट",
+      share: "शेयर",
+      back: "वापस",
+      settings: "सेटिंग्स",
+      moviesHeading: "KCNXFLIX की 5 प्रमुख फ़िल्में",
+      moviesSub: "प्रत्येक फ़िल्म का अपना निर्धारित कवर, लाइक, वॉचलिस्ट और शेयर विकल्प है।",
+      synopsisLabel: "कहानी",
+      directorLabel: "निर्देशक",
+      castLabel: "कलाकार",
+      detailsLabel: "विवरण"
+    }
   };
 
   /* ============================================================
-     LANGUAGE SWITCHING
+     STRICTLY 5 MOVIES WITH 5 DEDICATED COVERS (NO INTERCHANGE)
+     1. Ranabaali -> https://files.catbox.moe/1tb4j0.jpg
+     2. 418 -> https://files.catbox.moe/tfv9ys.webp
+     3. Coolie -> https://files.catbox.moe/ouq00m.webp
+     4. Dhurandhar 2 – The Revenge -> https://files.catbox.moe/xfph3b.webp
+     5. Mission Mangal -> https://files.catbox.moe/t2sdxj.jpg
      ============================================================ */
-  var langSelect   = document.getElementById("langSelect");
-  var heroHeadline = document.getElementById("heroHeadline");
-  var btnLabel     = document.getElementById("btnLabel");
+  var MOVIES = [
+    {
+      id: "movie1",
+      playbackId: "GQNt43pXVCZwfoDKWfskoZO49uiaXGmUMzUwJ2qfZLc",
+      cover: "https://files.catbox.moe/1tb4j0.jpg",
+      badge: "New",
+      title: { en: "Ranabaali", hi: "रणबाली" },
+      meta: { en: "2024 · U/A 16+ · 2h 12m · Action", hi: "2024 · U/A 16+ · 2घं 12मि · एक्शन" },
+      synopsis: {
+        en: "A fearless warrior rises against a ruthless empire, carving his name through blood, betrayal and fire.",
+        hi: "एक निडर योद्धा क्रूर साम्राज्य के विरुद्ध खड़ा होता है, खून, विश्वासघात और आग के बीच अपना नाम गढ़ता है।"
+      },
+      director: ["A. Sharma"],
+      cast: [
+        { n: "Vikram Rathore", r: "Ranabaali" },
+        { n: "Ananya Iyer", r: "Meera" },
+        { n: "Rohit Verma", r: "General Karan" }
+      ],
+      details: ["4K HDR", "Dolby Atmos", "Hindi · English"]
+    },
+    {
+      id: "movie2",
+      playbackId: "nGjzpY2xyH4upcctOiYcCi1mIdeUES7gm005vkARezvY",
+      cover: "https://files.catbox.moe/tfv9ys.webp",
+      badge: "Trending",
+      title: { en: "418", hi: "418" },
+      meta: { en: "2025 · U/A 13+ · 1h 58m · Thriller", hi: "2025 · U/A 13+ · 1घं 58मि · थ्रिलर" },
+      synopsis: {
+        en: "A cryptic radio signal sends a small town into chaos. The number 418 holds the key to everything.",
+        hi: "एक रहस्यमय रेडियो संकेत एक छोटे शहर को अराजकता में धकेल देता है। संख्या 418 सब कुछ का रहस्य समेटे हुए है।"
+      },
+      director: ["N. Kapoor"],
+      cast: [
+        { n: "Aditya Sen", r: "Ravi" },
+        { n: "Priya Malhotra", r: "Inspector Nisha" },
+        { n: "Karan Bhatia", r: "The Voice" }
+      ],
+      details: ["Dolby Vision", "Hindi · English"]
+    },
+    {
+      id: "movie3",
+      playbackId: "3gQlJ8WdCI397fh9ddDjJ01f16TNFixtDJccULfeC2eQ",
+      cover: "https://files.catbox.moe/ouq00m.webp",
+      badge: "Drama",
+      title: { en: "Coolie", hi: "कुली" },
+      meta: { en: "2024 · U/A 13+ · 2h 05m · Drama", hi: "2024 · U/A 13+ · 2घं 05मि · ड्रामा" },
+      synopsis: {
+        en: "The untold story of the hands that built a city — and the man who carried its weight on his shoulders.",
+        hi: "उन हाथों की अनकही कहानी जिन्होंने एक शहर बनाया — और उस आदमी की, जिसने उसका बोझ अपने कंधों पर उठाया।"
+      },
+      director: ["R. Deshmukh"],
+      cast: [
+        { n: "Salim Khan", r: "Coolie" },
+        { n: "Meena Pillai", r: "Lakshmi" },
+        { n: "Dev Anand", r: "The Contractor" }
+      ],
+      details: ["4K", "Dolby Atmos", "Hindi · Tamil"]
+    },
+    {
+      id: "movie4",
+      playbackId: "wxRk4XxOPIgkptGhxa302GXICyDw2DS02beHLW2302apB00",
+      cover: "https://files.catbox.moe/xfph3b.webp",
+      badge: "Premiere",
+      title: { en: "Dhurandhar 2 – The Revenge", hi: "धुरंधर 2 – द रिवेंज" },
+      meta: { en: "2025 · U/A 16+ · 2h 24m · Action", hi: "2025 · U/A 16+ · 2घं 24मि · एक्शन" },
+      synopsis: {
+        en: "Betrayed and left for dead, Dhurandhar returns with nothing to lose — and an entire empire to burn.",
+        hi: "धोखा और मौत के मुँह से लौटा धुरंधर — अब उसके पास खोने को कुछ नहीं, और जलाने को पूरा साम्राज्य है।"
+      },
+      director: ["V. Mehta"],
+      cast: [
+        { n: "Arjun Singh", r: "Dhurandhar" },
+        { n: "Tara Rao", r: "Agent Veena" },
+        { n: "Harsh Joshi", r: "The Boss" }
+      ],
+      details: ["IMAX Enhanced", "Dolby Atmos", "Hindi · Punjabi"]
+    },
+    {
+      id: "movie5",
+      playbackId: "ONJQcGA3CoeaknJun00vcEmFWk23019SU5ndAuRyFslOo",
+      cover: "https://files.catbox.moe/t2sdxj.jpg",
+      badge: "Featured",
+      title: { en: "Mission Mangal", hi: "मिशन मंगल" },
+      meta: { en: "2019 · U/A 13+ · 2h 10m · Drama", hi: "2019 · U/A 13+ · 2घं 10मि · ड्रामा" },
+      synopsis: {
+        en: "Based on India's Mars Orbiter Mission — a team of ISRO scientists race against impossible odds to put a satellite into Mars orbit on the first attempt.",
+        hi: "भारत के मंगल ऑर्बिटर मिशन पर आधारित — ISRO के वैज्ञानिकों की टीम पहले ही प्रयास में मंगल की कक्षा में उपग्रह स्थापित करने की असंभव चुनौती से जूझती है।"
+      },
+      director: ["Jagan Shakti"],
+      cast: [
+        { n: "Akshay Kumar", r: "Rakesh Dhawan" },
+        { n: "Vidya Balan", r: "Tara Shinde" },
+        { n: "Sonakshi Sinha", r: "Eka Gandhi" },
+        { n: "Taapsee Pannu", r: "Kritika Agarwal" }
+      ],
+      details: ["4K", "Dolby Atmos", "Hindi · English"]
+    }
+  ];
 
-  function applyLanguage(lang) {
-    var dict = I18N[lang] || I18N.en;
-    heroHeadline.textContent = dict.heroHeadline;
-    btnLabel.textContent = dict.btnLabel;
+  var FEATURED = MOVIES[4]; // Mission Mangal -> https://files.catbox.moe/t2sdxj.jpg
 
-    var nodes = document.querySelectorAll("[data-i18n]");
-    Array.prototype.forEach.call(nodes, function (node) {
-      var key = node.getAttribute("data-i18n");
-      if (dict[key]) node.textContent = dict[key];
-    });
-    document.documentElement.lang = lang;
+  var AVATAR_PRESETS = [
+    { id: "p1", label: "K", bg: "linear-gradient(135deg,#7c3aed,#ea580c)" },
+    { id: "p2", label: "★", bg: "linear-gradient(135deg,#e2262c,#9333ea)" },
+    { id: "p3", label: "▶", bg: "linear-gradient(135deg,#f59e0b,#db2777)" },
+    { id: "p4", label: "M", bg: "linear-gradient(135deg,#2563eb,#7c3aed)" },
+    { id: "p5", label: "☀", bg: "linear-gradient(135deg,#ea580c,#facc15)" }
+  ];
+
+  var state = {
+    lang: "en",
+    user: null,
+    customName: "",
+    avatarPreset: "p1",
+    avatarUrl: "",
+    likes: [],
+    watchlist: [],
+    settings: {
+      introVideo: true,
+      showLikes: true
+    }
+  };
+
+  function storageKey(){
+    var uid = (state.user && state.user.uid) ? state.user.uid : "default";
+    return "kcnxflix_state_" + uid;
   }
-  langSelect.addEventListener("change", function () { applyLanguage(this.value); });
-  applyLanguage("en");
+
+  function loadUserState(){
+    try {
+      var raw = localStorage.getItem(storageKey());
+      if (raw){
+        var parsed = JSON.parse(raw);
+        state.customName = parsed.customName || "";
+        state.avatarPreset = parsed.avatarPreset || "p1";
+        state.avatarUrl = parsed.avatarUrl || "";
+        state.likes = Array.isArray(parsed.likes) ? parsed.likes : [];
+        state.watchlist = Array.isArray(parsed.watchlist) ? parsed.watchlist : [];
+        if (parsed.settings){
+          state.settings.introVideo = parsed.settings.introVideo !== false;
+          state.settings.showLikes = parsed.settings.showLikes !== false;
+        }
+      }
+    } catch(e){}
+  }
+
+  function saveUserState(){
+    try {
+      localStorage.setItem(storageKey(), JSON.stringify({
+        customName: state.customName,
+        avatarPreset: state.avatarPreset,
+        avatarUrl: state.avatarUrl,
+        likes: state.likes,
+        watchlist: state.watchlist,
+        settings: state.settings
+      }));
+    } catch(e){}
+  }
+
+  var toastEl = document.getElementById("toast");
+  var toastTimer = null;
+  function showToast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toastEl.classList.remove("show"); }, 2400);
+  }
 
   /* ============================================================
-     ELEMENTS
+     I18N
      ============================================================ */
-  var intro         = document.getElementById("intro");
-  var video         = document.getElementById("introVideo");
-  var embedStage    = document.getElementById("embedStage");
-  var siteFrame     = document.getElementById("siteFrame");
-  var bgMusic       = document.getElementById("bgMusic");
-  var getStartedBtn = document.getElementById("getStartedBtn");
-  var homeBtn       = document.getElementById("homeBtn");
-
-  var videoTimer = null;
-  var started    = false;
-  var musicPlayedOnce = false;
+  function setLang(l){
+    state.lang = I18N[l] ? l : "en";
+    var dict = I18N[state.lang];
+    document.querySelectorAll("[data-i18n]").forEach(function(n){
+      var k = n.getAttribute("data-i18n");
+      if (dict[k] !== undefined) n.textContent = dict[k];
+    });
+    document.querySelectorAll("[data-lang-select]").forEach(function(s){ s.value = state.lang; });
+    document.documentElement.lang = state.lang;
+    renderBillboard();
+    renderMoviesGrid();
+    renderWatchlist();
+    if (currentDetailMovie) populateDetail(currentDetailMovie);
+  }
+  document.querySelectorAll("[data-lang-select]").forEach(function(s){
+    s.addEventListener("change", function(){ setLang(this.value); });
+  });
 
   /* ============================================================
-     MUSIC (PLAYS ONE TIME ON ENTRY)
+     FIREBASE AUTH (NO ANONYMOUS LOGIN; REAL SDK EMAIL VERIFICATION)
      ============================================================ */
-  function playMusicOnce() {
-    if (musicPlayedOnce) return;
-    musicPlayedOnce = true;
-    bgMusic.loop = false;
-    bgMusic.currentTime = 0;
-    bgMusic.volume = 0.55;
-    var p = bgMusic.play();
-    if (p && typeof p.catch === "function") {
-      p.catch(function () {
-        musicPlayedOnce = false;
-        var retryOnce = function () {
-          window.removeEventListener("pointerdown", retryOnce);
-          window.removeEventListener("keydown", retryOnce);
-          window.removeEventListener("touchstart", retryOnce);
-          if (!musicPlayedOnce) {
-            musicPlayedOnce = true;
-            bgMusic.loop = false;
-            bgMusic.currentTime = 0;
-            bgMusic.volume = 0.55;
-            bgMusic.play().catch(function () {});
-          }
-        };
-        window.addEventListener("pointerdown", retryOnce, { passive: true, once: true });
-        window.addEventListener("keydown", retryOnce, { once: true });
-        window.addEventListener("touchstart", retryOnce, { passive: true, once: true });
+  var authModal = document.getElementById("authModal");
+  var authStatus = document.getElementById("authStatus");
+  var tabEmailLink = document.getElementById("tabEmailLink");
+  var tabEmailPass = document.getElementById("tabEmailPass");
+  var emailLinkForm = document.getElementById("emailLinkForm");
+  var emailPassForm = document.getElementById("emailPassForm");
+
+  function openAuthModal(){
+    authStatus.textContent = "";
+    authModal.classList.add("show");
+    authModal.setAttribute("aria-hidden", "false");
+  }
+  function closeAuthModal(){
+    authModal.classList.remove("show");
+    authModal.setAttribute("aria-hidden", "true");
+  }
+
+  document.getElementById("openAuthBtn").addEventListener("click", openAuthModal);
+  document.getElementById("authCloseBtn").addEventListener("click", closeAuthModal);
+
+  tabEmailLink.addEventListener("click", function(){
+    tabEmailLink.classList.add("active");
+    tabEmailPass.classList.remove("active");
+    emailLinkForm.style.display = "block";
+    emailPassForm.style.display = "none";
+    authStatus.textContent = "";
+  });
+
+  tabEmailPass.addEventListener("click", function(){
+    tabEmailPass.classList.add("active");
+    tabEmailLink.classList.remove("active");
+    emailPassForm.style.display = "block";
+    emailLinkForm.style.display = "none";
+    authStatus.textContent = "";
+  });
+
+  document.getElementById("googleSignInBtn").addEventListener("click", function(){
+    var fb = window.__kcnxFirebase;
+    if (!fb) return;
+    authStatus.textContent = "Connecting to Google Sign-In...";
+    fb.signInWithPopup(fb.auth, fb.googleProvider)
+      .then(function(res){
+        authStatus.textContent = "Signed in as " + (res.user.email || res.user.displayName);
+        setTimeout(function(){
+          closeAuthModal();
+          launchAfterSignIn();
+        }, 450);
+      })
+      .catch(function(err){
+        authStatus.textContent = err.message || "Google sign-in failed.";
+      });
+  });
+
+  emailLinkForm.addEventListener("submit", function(e){
+    e.preventDefault();
+    var fb = window.__kcnxFirebase;
+    var email = document.getElementById("linkEmailInput").value.trim();
+    if (!fb || !email) return;
+    var actionCodeSettings = {
+      url: window.location.href,
+      handleCodeInApp: true
+    };
+    authStatus.textContent = "Sending Firebase sign-in link...";
+    window.localStorage.setItem("kcnx_email_for_signin", email);
+    fb.sendSignInLinkToEmail(fb.auth, email, actionCodeSettings)
+      .then(function(){
+        authStatus.textContent = "Firebase verification link sent to " + email + ". Open your inbox and click the link.";
+      })
+      .catch(function(err){
+        authStatus.textContent = err.message || "Could not send sign-in link.";
+      });
+  });
+
+  document.getElementById("emailLoginBtn").addEventListener("click", function(){
+    var fb = window.__kcnxFirebase;
+    var email = document.getElementById("passEmailInput").value.trim();
+    var pass = document.getElementById("passPasswordInput").value;
+    if (!fb || !email || !pass) return;
+    authStatus.textContent = "Signing in...";
+    fb.signInWithEmailAndPassword(fb.auth, email, pass)
+      .then(function(res){
+        authStatus.textContent = "Signed in!";
+        setTimeout(function(){
+          closeAuthModal();
+          launchAfterSignIn();
+        }, 400);
+      })
+      .catch(function(err){
+        authStatus.textContent = err.message || "Sign-in failed.";
+      });
+  });
+
+  document.getElementById("emailRegisterBtn").addEventListener("click", function(){
+    var fb = window.__kcnxFirebase;
+    var email = document.getElementById("passEmailInput").value.trim();
+    var pass = document.getElementById("passPasswordInput").value;
+    if (!fb || !email || pass.length < 6){
+      authStatus.textContent = "Enter a valid email and password (6+ characters).";
+      return;
+    }
+    authStatus.textContent = "Creating account & sending Firebase verification email...";
+    fb.createUserWithEmailAndPassword(fb.auth, email, pass)
+      .then(function(cred){
+        return fb.sendEmailVerification(cred.user).then(function(){
+          authStatus.textContent = "Account created! Verification email sent via Firebase to " + email + ".";
+          setTimeout(function(){
+            closeAuthModal();
+            launchAfterSignIn();
+          }, 900);
+        });
+      })
+      .catch(function(err){
+        authStatus.textContent = err.message || "Registration failed.";
+      });
+  });
+
+  function signOutUser(){
+    var fb = window.__kcnxFirebase;
+    if (fb && fb.auth.currentUser){
+      fb.signOut(fb.auth).then(function(){
+        state.user = null;
+        document.getElementById("app").classList.remove("active");
+        document.getElementById("getstarted").style.display = "block";
+        closeProfileDrawer();
+        showToast("Signed out");
       });
     }
   }
+  document.getElementById("drawerSignOutBtn").addEventListener("click", signOutUser);
+
+  window.__onKcnxAuthChanged = function(user){
+    state.user = user;
+    if (user){
+      loadUserState();
+      syncProfileUI();
+      syncSettingsUI();
+      renderMoviesGrid();
+      renderWatchlist();
+      renderBillboard();
+    }
+  };
+
+  window.__onKcnxAuthSuccess = function(user){
+    if (user){
+      state.user = user;
+      loadUserState();
+      syncProfileUI();
+      syncSettingsUI();
+    }
+    launchAfterSignIn();
+  };
 
   /* ============================================================
-     VIDEO -> FULL-PAGE IFRAME
+     INTRO & APP LAUNCH
      ============================================================ */
-  function showEmbed() {
-    if (videoTimer) { clearTimeout(videoTimer); videoTimer = null; }
+  var intro = document.getElementById("intro");
+  var introVideo = document.getElementById("introVideo");
+  var app = document.getElementById("app");
+  var introTimer = null;
 
-    try { video.pause(); } catch (e) {}
-    video.style.display = "none";
-    embedStage.classList.add("active");
-
-    if (!siteFrame.src || siteFrame.src === "about:blank") {
-      siteFrame.src = EMBED_URL;
-    }
+  function showApp(){
+    if (introTimer){ clearTimeout(introTimer); introTimer = null; }
+    try { introVideo.pause(); } catch(e){}
+    intro.classList.remove("show");
+    intro.setAttribute("aria-hidden", "true");
+    document.getElementById("getstarted").style.display = "none";
+    app.classList.add("active");
+    document.body.classList.remove("locked");
+    renderBillboard();
+    renderMoviesGrid();
+    renderWatchlist();
+    window.scrollTo(0, 0);
   }
 
-  function playIntro() {
+  function launchAfterSignIn(){
+    if (!state.settings.introVideo){
+      showApp();
+      return;
+    }
     intro.classList.add("show");
     intro.setAttribute("aria-hidden", "false");
     document.body.classList.add("locked");
-
-    video.currentTime = 0;
-    video.muted = false;
-    video.volume = 1;
-
-    var playPromise = video.play();
-    if (playPromise && typeof playPromise.catch === "function") {
-      playPromise.catch(function () {
-        video.muted = true;
-        video.play().catch(function () { showEmbed(); });
+    introVideo.currentTime = 0;
+    introVideo.muted = false;
+    introVideo.volume = 1;
+    var p = introVideo.play();
+    if (p && p.catch){
+      p.catch(function(){
+        introVideo.muted = true;
+        introVideo.play().catch(showApp);
       });
     }
+    introTimer = setTimeout(showApp, 30000);
+  }
 
-    if (!videoTimer) {
-      videoTimer = setTimeout(showEmbed, VIDEO_TIMEOUT);
+  introVideo.addEventListener("ended", showApp);
+  introVideo.addEventListener("error", showApp);
+
+  /* ============================================================
+     PROFILE ICON, USER ID & SETTINGS
+     ============================================================ */
+  var profileDrawer = document.getElementById("profileDrawer");
+  var settingsDrawer = document.getElementById("settingsDrawer");
+
+  function getDisplayName(){
+    if (state.customName && state.customName.trim()) return state.customName.trim();
+    if (state.user && state.user.displayName) return state.user.displayName;
+    if (state.user && state.user.email) return state.user.email.split("@")[0];
+    return "Member";
+  }
+
+  function applyAvatarElement(el){
+    var preset = AVATAR_PRESETS.find(function(a){ return a.id === state.avatarPreset; }) || AVATAR_PRESETS[0];
+    if (state.avatarUrl && state.avatarUrl.trim()){
+      el.style.backgroundImage = "url('" + state.avatarUrl.trim().replace(/'/g, "%27") + "')";
+      el.textContent = "";
+    } else {
+      el.style.backgroundImage = "none";
+      el.style.background = preset.bg;
+      el.textContent = preset.label;
     }
   }
 
-  video.addEventListener("playing", function () { started = true; });
-  video.addEventListener("ended", showEmbed);
-  video.addEventListener("error", showEmbed);
+  function syncProfileUI(){
+    var name = getDisplayName();
+    var uid = (state.user && state.user.uid) ? state.user.uid : "NO_USER_ID";
+    var email = (state.user && state.user.email) ? state.user.email : "Verified Account";
 
-  /* ============================================================
-     GET STARTED
-     ============================================================ */
-  getStartedBtn.addEventListener("click", function () {
-    playMusicOnce();
-    if (started) return;
-    playIntro();
+    document.getElementById("topUserName").textContent = name;
+    document.getElementById("drawerDisplayName").textContent = name;
+    document.getElementById("drawerEmail").textContent = email;
+    document.getElementById("drawerUid").textContent = "UID: " + uid;
+    document.getElementById("profileNameInput").value = state.customName || "";
+    document.getElementById("customAvatarUrlInput").value = state.avatarUrl || "";
+
+    applyAvatarElement(document.getElementById("topAvatar"));
+    applyAvatarElement(document.getElementById("drawerAvatar"));
+    renderAvatarPresets();
+  }
+
+  function renderAvatarPresets(){
+    var picker = document.getElementById("avatarPresetPicker");
+    picker.innerHTML = "";
+    AVATAR_PRESETS.forEach(function(p){
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "avatar-option" + (!state.avatarUrl && state.avatarPreset === p.id ? " selected" : "");
+      btn.style.background = p.bg;
+      btn.textContent = p.label;
+      btn.title = "Icon " + p.label;
+      btn.addEventListener("click", function(){
+        state.avatarUrl = "";
+        state.avatarPreset = p.id;
+        saveUserState();
+        syncProfileUI();
+        showToast("Profile icon updated");
+      });
+      picker.appendChild(btn);
+    });
+  }
+
+  document.getElementById("saveProfileBtn").addEventListener("click", function(){
+    state.customName = document.getElementById("profileNameInput").value.trim();
+    saveUserState();
+    syncProfileUI();
+    showToast("Profile name saved");
+  });
+
+  document.getElementById("applyAvatarUrlBtn").addEventListener("click", function(){
+    state.avatarUrl = document.getElementById("customAvatarUrlInput").value.trim();
+    saveUserState();
+    syncProfileUI();
+    showToast("Custom profile icon set");
+  });
+
+  function openProfileDrawer(){
+    syncProfileUI();
+    profileDrawer.classList.add("show");
+    profileDrawer.setAttribute("aria-hidden", "false");
+  }
+  function closeProfileDrawer(){
+    profileDrawer.classList.remove("show");
+    profileDrawer.setAttribute("aria-hidden", "true");
+  }
+  document.getElementById("openProfileBtn").addEventListener("click", openProfileDrawer);
+  document.getElementById("closeProfileDrawer").addEventListener("click", closeProfileDrawer);
+
+  function syncSettingsUI(){
+    document.getElementById("prefIntroVideo").checked = state.settings.introVideo;
+    document.getElementById("prefShowLikes").checked = state.settings.showLikes;
+  }
+
+  document.getElementById("prefIntroVideo").addEventListener("change", function(){
+    state.settings.introVideo = this.checked;
+    saveUserState();
+    showToast("Intro video setting saved");
+  });
+
+  document.getElementById("prefShowLikes").addEventListener("change", function(){
+    state.settings.showLikes = this.checked;
+    saveUserState();
+    renderMoviesGrid();
+    showToast("Like display updated");
+  });
+
+  document.getElementById("resetPrefsBtn").addEventListener("click", function(){
+    state.customName = "";
+    state.avatarPreset = "p1";
+    state.avatarUrl = "";
+    state.likes = [];
+    state.watchlist = [];
+    state.settings = { introVideo: true, showLikes: true };
+    saveUserState();
+    syncProfileUI();
+    syncSettingsUI();
+    renderMoviesGrid();
+    renderWatchlist();
+    renderBillboard();
+    showToast("Preferences reset");
+  });
+
+  function openSettingsDrawer(){
+    syncSettingsUI();
+    settingsDrawer.classList.add("show");
+    settingsDrawer.setAttribute("aria-hidden", "false");
+  }
+  function closeSettingsDrawer(){
+    settingsDrawer.classList.remove("show");
+    settingsDrawer.setAttribute("aria-hidden", "true");
+  }
+  document.getElementById("openSettingsBtn").addEventListener("click", openSettingsDrawer);
+  document.getElementById("closeSettingsDrawer").addEventListener("click", closeSettingsDrawer);
+
+  document.getElementById("openWatchlistNav").addEventListener("click", function(){
+    document.getElementById("watchlistPanel").scrollIntoView({ behavior: "smooth" });
   });
 
   /* ============================================================
-     HOME BUTTON
+     LIKE, WATCHLIST & SHARE ACTIONS
      ============================================================ */
-  homeBtn.addEventListener("click", function () {
-    siteFrame.src = "about:blank";
-    setTimeout(function () {
-      siteFrame.src = EMBED_URL;
-    }, 20);
-  });
+  function isLiked(id){ return state.likes.indexOf(id) !== -1; }
+  function isInWatchlist(id){ return state.watchlist.indexOf(id) !== -1; }
+
+  function toggleLike(id){
+    var idx = state.likes.indexOf(id);
+    if (idx === -1){
+      state.likes.push(id);
+      showToast("Added to Liked");
+    } else {
+      state.likes.splice(idx, 1);
+      showToast("Removed Like");
+    }
+    saveUserState();
+    renderMoviesGrid();
+    renderBillboard();
+    if (currentDetailMovie && currentDetailMovie.id === id) populateDetail(currentDetailMovie);
+  }
+
+  function toggleWatchlist(id){
+    var idx = state.watchlist.indexOf(id);
+    if (idx === -1){
+      state.watchlist.push(id);
+      showToast("Saved to Watchlist");
+    } else {
+      state.watchlist.splice(idx, 1);
+      showToast("Removed from Watchlist");
+    }
+    saveUserState();
+    renderMoviesGrid();
+    renderWatchlist();
+    renderBillboard();
+    if (currentDetailMovie && currentDetailMovie.id === id) populateDetail(currentDetailMovie);
+  }
+
+  function shareMovie(movie){
+    var shareTitle = movie.title[state.lang];
+    var shareUrl = window.location.origin + window.location.pathname + "?movie=" + encodeURIComponent(movie.id);
+    if (navigator.share){
+      navigator.share({
+        title: "KCNXFLIX — " + shareTitle,
+        text: "Watch " + shareTitle + " on KCNXFLIX",
+        url: shareUrl
+      }).catch(function(){});
+    } else if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(shareUrl).then(function(){
+        showToast("Link copied: " + shareTitle);
+      }).catch(function(){
+        showToast("Share: " + shareUrl);
+      });
+    } else {
+      showToast("Share: " + shareUrl);
+    }
+  }
 
   /* ============================================================
-     RESET ON BACK NAV
+     BILLBOARD, 5 MOVIE CARDS & WATCHLIST RENDERING
      ============================================================ */
-  window.addEventListener("pageshow", function (ev) {
-    if (ev.persisted) {
-      started = false;
-      musicPlayedOnce = false;
-      if (videoTimer) { clearTimeout(videoTimer); videoTimer = null; }
-      try { video.pause(); video.currentTime = 0; } catch (e) {}
-      try { bgMusic.pause(); bgMusic.currentTime = 0; } catch (e) {}
-      video.style.display = "";
-      embedStage.classList.remove("active");
-      siteFrame.src = "";
-      intro.classList.remove("show");
-      intro.setAttribute("aria-hidden", "true");
-      document.body.classList.remove("locked");
+  function renderBillboard(){
+    document.getElementById("billboardBackdrop").style.backgroundImage = "url('" + FEATURED.cover + "')";
+    document.getElementById("billboardTitle").textContent = FEATURED.title[state.lang];
+    document.getElementById("billboardMeta").textContent = FEATURED.meta[state.lang];
+    document.getElementById("billboardSynopsis").textContent = FEATURED.synopsis[state.lang];
+
+    var bLike = document.getElementById("billboardLike");
+    var bWatch = document.getElementById("billboardWatchlist");
+    bLike.classList.toggle("active", isLiked(FEATURED.id));
+    bWatch.classList.toggle("active", isInWatchlist(FEATURED.id));
+  }
+
+  function renderMoviesGrid(){
+    var grid = document.getElementById("moviesGrid");
+    grid.innerHTML = "";
+
+    // Strictly renders the 5 movies with their exact 5 non-interchanged covers
+    MOVIES.forEach(function(m){
+      var card = document.createElement("article");
+      card.className = "movie-card";
+
+      var posterWrap = document.createElement("div");
+      posterWrap.className = "card-poster-wrap";
+      posterWrap.addEventListener("click", function(){ openDetail(m); });
+
+      var img = document.createElement("img");
+      img.src = m.cover;
+      img.alt = m.title[state.lang];
+      img.loading = "lazy";
+      posterWrap.appendChild(img);
+
+      var badge = document.createElement("span");
+      badge.className = "card-badge";
+      badge.textContent = m.badge;
+      posterWrap.appendChild(badge);
+
+      var body = document.createElement("div");
+      body.className = "card-body";
+
+      var titleEl = document.createElement("div");
+      titleEl.className = "card-title";
+      titleEl.textContent = m.title[state.lang];
+      titleEl.addEventListener("click", function(){ openDetail(m); });
+
+      var metaEl = document.createElement("div");
+      metaEl.className = "card-meta";
+      metaEl.textContent = m.meta[state.lang];
+
+      var controls = document.createElement("div");
+      controls.className = "card-controls";
+
+      var playBtn = document.createElement("button");
+      playBtn.type = "button";
+      playBtn.className = "card-btn play-sm";
+      playBtn.textContent = "▶ " + I18N[state.lang].play;
+      playBtn.addEventListener("click", function(){ openMuxPlayer(m); });
+
+      var likeBtn = document.createElement("button");
+      likeBtn.type = "button";
+      var liked = isLiked(m.id);
+      likeBtn.className = "card-btn" + (liked && state.settings.showLikes ? " liked" : "");
+      likeBtn.textContent = (liked ? "♥" : "♡") + (liked && state.settings.showLikes ? " Liked" : "");
+      likeBtn.title = I18N[state.lang].like;
+      likeBtn.addEventListener("click", function(){ toggleLike(m.id); });
+
+      var watchBtn = document.createElement("button");
+      watchBtn.type = "button";
+      var saved = isInWatchlist(m.id);
+      watchBtn.className = "card-btn" + (saved ? " saved" : "");
+      watchBtn.textContent = saved ? "✓ Saved" : "+ List";
+      watchBtn.title = I18N[state.lang].watchlist;
+      watchBtn.addEventListener("click", function(){ toggleWatchlist(m.id); });
+
+      var shareBtn = document.createElement("button");
+      shareBtn.type = "button";
+      shareBtn.className = "card-btn";
+      shareBtn.textContent = "⤴";
+      shareBtn.title = I18N[state.lang].share;
+      shareBtn.addEventListener("click", function(){ shareMovie(m); });
+
+      controls.appendChild(playBtn);
+      controls.appendChild(likeBtn);
+      controls.appendChild(watchBtn);
+      controls.appendChild(shareBtn);
+
+      body.appendChild(titleEl);
+      body.appendChild(metaEl);
+      body.appendChild(controls);
+
+      card.appendChild(posterWrap);
+      card.appendChild(body);
+      grid.appendChild(card);
+    });
+  }
+
+  function renderWatchlist(){
+    var chips = document.getElementById("watchlistChips");
+    var emptyText = document.getElementById("watchlistEmptyText");
+    var badge = document.getElementById("watchlistCountBadge");
+    chips.innerHTML = "";
+    badge.textContent = String(state.watchlist.length);
+
+    if (!state.watchlist.length){
+      emptyText.style.display = "block";
+      return;
+    }
+    emptyText.style.display = "none";
+
+    state.watchlist.forEach(function(id){
+      var m = MOVIES.find(function(x){ return x.id === id; });
+      if (!m) return;
+      var chip = document.createElement("div");
+      chip.className = "watchlist-chip";
+
+      var label = document.createElement("span");
+      label.style.cursor = "pointer";
+      label.textContent = m.title[state.lang];
+      label.addEventListener("click", function(){ openDetail(m); });
+
+      var rm = document.createElement("button");
+      rm.type = "button";
+      rm.textContent = "✕";
+      rm.title = "Remove";
+      rm.addEventListener("click", function(){ toggleWatchlist(m.id); });
+
+      chip.appendChild(label);
+      chip.appendChild(rm);
+      chips.appendChild(chip);
+    });
+  }
+
+  /* ============================================================
+     DETAIL PAGE & MUX PLAYER
+     ============================================================ */
+  var detailPage = document.getElementById("detailPage");
+  var currentDetailMovie = null;
+
+  function populateDetail(m){
+    document.getElementById("detailBackdrop").style.backgroundImage = "url('" + m.cover + "')";
+    document.getElementById("detailTitle").textContent = m.title[state.lang];
+    document.getElementById("detailMeta").textContent = m.meta[state.lang];
+    document.getElementById("detailSynopsis").textContent = m.synopsis[state.lang];
+
+    document.getElementById("detailLike").classList.toggle("active", isLiked(m.id));
+    document.getElementById("detailWatchlist").classList.toggle("active", isInWatchlist(m.id));
+
+    var dirList = document.getElementById("detailDirector");
+    dirList.innerHTML = "";
+    m.director.forEach(function(d){
+      var pill = document.createElement("span");
+      pill.className = "info-pill";
+      pill.textContent = d;
+      dirList.appendChild(pill);
+    });
+
+    var castRow = document.getElementById("detailCast");
+    castRow.innerHTML = "";
+    m.cast.forEach(function(c){
+      var cc = document.createElement("div");
+      cc.className = "cast-card";
+      var av = document.createElement("div");
+      av.className = "avatar";
+      av.textContent = c.n.charAt(0);
+      var n = document.createElement("div");
+      n.className = "cname";
+      n.textContent = c.n;
+      var r = document.createElement("div");
+      r.className = "crole";
+      r.textContent = c.r;
+      cc.appendChild(av); cc.appendChild(n); cc.appendChild(r);
+      castRow.appendChild(cc);
+    });
+
+    var detList = document.getElementById("detailDetails");
+    detList.innerHTML = "";
+    m.details.forEach(function(d){
+      var pill = document.createElement("span");
+      pill.className = "info-pill";
+      pill.textContent = d;
+      detList.appendChild(pill);
+    });
+  }
+
+  function openDetail(m){
+    currentDetailMovie = m;
+    populateDetail(m);
+    detailPage.classList.add("show");
+    detailPage.setAttribute("aria-hidden", "false");
+    document.body.classList.add("locked");
+    detailPage.scrollTop = 0;
+  }
+  function closeDetail(){
+    detailPage.classList.remove("show");
+    detailPage.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("locked");
+  }
+  document.getElementById("detailBackBtn").addEventListener("click", closeDetail);
+
+  document.getElementById("billboardInfo").addEventListener("click", function(){ openDetail(FEATURED); });
+  document.getElementById("billboardPlay").addEventListener("click", function(){ openMuxPlayer(FEATURED); });
+  document.getElementById("billboardLike").addEventListener("click", function(){ toggleLike(FEATURED.id); });
+  document.getElementById("billboardWatchlist").addEventListener("click", function(){ toggleWatchlist(FEATURED.id); });
+  document.getElementById("billboardShare").addEventListener("click", function(){ shareMovie(FEATURED); });
+
+  document.getElementById("detailPlay").addEventListener("click", function(){
+    if (currentDetailMovie) openMuxPlayer(currentDetailMovie);
+  });
+  document.getElementById("detailLike").addEventListener("click", function(){
+    if (currentDetailMovie) toggleLike(currentDetailMovie.id);
+  });
+  document.getElementById("detailWatchlist").addEventListener("click", function(){
+    if (currentDetailMovie) toggleWatchlist(currentDetailMovie.id);
+  });
+  document.getElementById("detailShare").addEventListener("click", function(){
+    if (currentDetailMovie) shareMovie(currentDetailMovie);
+  });
+
+  var muxModal = document.getElementById("muxModal");
+  var muxFrame = document.getElementById("muxFrame");
+
+  function openMuxPlayer(movie){
+    muxFrame.src = "https://player.mux.com/" + movie.playbackId +
+      "?autoplay=true&muted=false&metadata-video-title=" +
+      encodeURIComponent(movie.title[state.lang]);
+    muxModal.classList.add("show");
+    muxModal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("locked");
+  }
+  function closeMuxPlayer(){
+    muxModal.classList.remove("show");
+    muxModal.setAttribute("aria-hidden", "true");
+    muxFrame.src = "about:blank";
+    document.body.classList.remove("locked");
+  }
+  document.getElementById("muxClose").addEventListener("click", closeMuxPlayer);
+
+  document.addEventListener("keydown", function(e){
+    if (e.key === "Escape"){
+      if (muxModal.classList.contains("show")) closeMuxPlayer();
+      if (detailPage.classList.contains("show")) closeDetail();
+      if (profileDrawer.classList.contains("show")) closeProfileDrawer();
+      if (settingsDrawer.classList.contains("show")) closeSettingsDrawer();
+      if (authModal.classList.contains("show")) closeAuthModal();
     }
   });
+
+  window.addEventListener("scroll", function(){
+    var topbar = document.getElementById("topbar");
+    if (window.scrollY > 30) topbar.classList.add("scrolled");
+    else topbar.classList.remove("scrolled");
+  }, { passive: true });
+
+  syncProfileUI();
+  syncSettingsUI();
+  setLang("en");
 })();
 </script>
 </body>
